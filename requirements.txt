@@ -1,0 +1,5 @@
+# Team Owner: Kumar (Coordinates dependency changes)
+# Workstream: Project Coordination
+# File: requirements.txt
+# Description: Project dependencies agreed upon across deep, classical, hybrid, and app modules.
+
