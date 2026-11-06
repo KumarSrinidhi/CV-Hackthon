@@ -92,3 +92,5 @@ desktop.ini
 
 # Tool caches
 .commandcode/
+
+/checkpoints/

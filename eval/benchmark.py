@@ -19,6 +19,7 @@ import argparse
 import csv
 import json
 import time
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
@@ -38,11 +39,49 @@ def _torch_cuda():
         return None
 
 
+def _process_rss_mb():
+    try:
+        import psutil
+        return float(psutil.Process(os.getpid()).memory_info().rss / 2**20)
+    except ImportError:
+        if os.name != "nt":
+            return None
+        import ctypes
+        from ctypes import wintypes
+
+        class Counters(ctypes.Structure):
+            _fields_ = [
+                ("cb", wintypes.DWORD),
+                ("page_fault_count", wintypes.DWORD),
+                ("peak_working_set_size", ctypes.c_size_t),
+                ("working_set_size", ctypes.c_size_t),
+                ("quota_peak_paged_pool_usage", ctypes.c_size_t),
+                ("quota_paged_pool_usage", ctypes.c_size_t),
+                ("quota_peak_non_paged_pool_usage", ctypes.c_size_t),
+                ("quota_non_paged_pool_usage", ctypes.c_size_t),
+                ("pagefile_usage", ctypes.c_size_t),
+                ("peak_pagefile_usage", ctypes.c_size_t),
+            ]
+
+        counters = Counters()
+        counters.cb = ctypes.sizeof(Counters)
+        handle = ctypes.windll.kernel32.GetCurrentProcess()
+        get_info = ctypes.windll.psapi.GetProcessMemoryInfo
+        get_info.argtypes = [wintypes.HANDLE, ctypes.POINTER(Counters), wintypes.DWORD]
+        get_info.restype = wintypes.BOOL
+        if get_info(handle, ctypes.byref(counters), counters.cb):
+            return float(counters.peak_working_set_size / 2**20)
+        return None
+    except Exception:
+        return None
+
+
 def profile_method(fn: Method, sample: dict, warmup: int = 2, runs: int = 10) -> dict:
     """Latency (ms) and peak GPU memory (MB, None without CUDA) of ``fn`` on one sample,
     plus repeatability = max |run1 - run2|."""
     args = (sample["lr_depth"], sample["hr_rgb"], sample["lr_valid_mask"], sample["scale"])
     torch = _torch_cuda()
+    ram_before = _process_rss_mb()
     for _ in range(warmup):
         fn(*[a.copy() if hasattr(a, "copy") else a for a in args])
     if torch:
@@ -64,6 +103,7 @@ def profile_method(fn: Method, sample: dict, warmup: int = 2, runs: int = 10) ->
         "latency_ms_p95": float(np.percentile(t, 95)),
         "peak_gpu_alloc_mb": float(torch.cuda.max_memory_allocated() / 2**20) if torch else None,
         "peak_gpu_reserved_mb": float(torch.cuda.max_memory_reserved() / 2**20) if torch else None,
+        "peak_ram_mb": _process_rss_mb() if ram_before is not None else None,
         "repeat_max_abs_diff": float(np.abs(outs[0] - outs[1]).max()),
         "image_hw": tuple(sample["depth_original"].shape),
     }
@@ -104,7 +144,7 @@ def run_benchmark(
 
 
 _COLS = ["dataset", "split", "scale", "method", "status", "n", "rmse", "mae", "psnr", "ssim", "boundary_rmse",
-         "edge_f1", "latency_ms_median", "latency_ms_p95", "peak_gpu_alloc_mb", "peak_gpu_reserved_mb",
+         "edge_f1", "latency_ms_median", "latency_ms_p95", "peak_ram_mb", "peak_gpu_alloc_mb", "peak_gpu_reserved_mb",
          "repeat_max_abs_diff"]
 
 

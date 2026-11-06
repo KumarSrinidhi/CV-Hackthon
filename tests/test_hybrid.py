@@ -110,3 +110,39 @@ def test_hybrid_deterministic():
     a = hybrid_hr_depth(lr, rgb, None, 4, deep_fn=_fake_deep(3.0))
     b = hybrid_hr_depth(lr, rgb, None, 4, deep_fn=_fake_deep(3.0))
     np.testing.assert_array_equal(a, b)
+
+
+def test_fixed_fusion_can_disable_postprocessing():
+    lr, rgb = _synthetic(4)
+    deep = _fake_deep(3.0)
+    out = hybrid_hr_depth(
+        lr,
+        rgb,
+        None,
+        4,
+        classical_weight=0.0,
+        use_refinement=False,
+        use_consistency=False,
+        deep_fn=deep,
+    )
+    np.testing.assert_allclose(out, 3.0)
+
+
+def test_fixed_fusion_rejects_invalid_classical_weight():
+    lr, rgb = _synthetic(4)
+    with pytest.raises(ValueError, match="classical_weight"):
+        hybrid_hr_depth(lr, rgb, None, 4, classical_weight=1.1, deep_fn=_fake_deep())
+
+
+def test_consistency_requires_exact_operator():
+    lr, rgb = _synthetic(4)
+    with pytest.raises(ValueError, match="exact known degradation operator"):
+        hybrid_hr_depth(
+            lr,
+            rgb,
+            None,
+            4,
+            classical_weight=0.02,
+            operator_exact=False,
+            deep_fn=_fake_deep(),
+        )

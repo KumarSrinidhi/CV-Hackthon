@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 
 
-def enforce_consistency(fused_hr, lr_depth, valid_mask=None, scale=4, operator=None):
+def enforce_consistency(fused_hr, lr_depth, valid_mask=None, scale=4, operator=None, mode="bicubic"):
     """Project the fused HR depth onto the known measurements and return the corrected map."""
     Df = np.asarray(fused_hr, dtype=np.float32)
     lr = np.asarray(lr_depth, dtype=np.float32)
@@ -26,7 +26,7 @@ def enforce_consistency(fused_hr, lr_depth, valid_mask=None, scale=4, operator=N
     if operator is None:
         from data.degradation import forward_operator
 
-        operator = forward_operator(scale, "bicubic")
+        operator = forward_operator(scale, mode)
 
     valid = np.isfinite(lr) & (lr > 0)
     if valid_mask is not None:

@@ -55,10 +55,31 @@ D_f' = D_f + upsample(r_LR)   # nearest (block-constant) upsample
 ```
 
 For unknown real sensor formation processes this exact residual is **not** claimed;
-it is applied only under the known synthetic protocol.
+it is applied only when `operator_exact=True` and with the matching degradation
+mode (`bicubic`, `bilinear`, or `nearest`). Noisy or hole-punched measurements
+must not use this correction because their forward process includes additional
+operations beyond `S`.
+
+The public pipeline exposes `consistency_mode` and `operator_exact`; it rejects
+consistency requests when the operator is not exact rather than silently applying
+the bicubic default.
 
 ## Ablations
 
 `hybrid/ablations()` returns: `classical`, `deep`, `fixed_fusion`,
 `confidence_fusion`, `confidence_boundary`, and `final` (confidence + boundary +
 measurement consistency).
+
+For validation tuning of a fixed classical contribution, run:
+
+```
+python scripts/eval_hybrid_ablation.py --split val --max-samples 30
+```
+
+This evaluates Deep alone and 0%, 2%, 5%, 10%, and 20% classical blends with
+refinement and consistency disabled. It then selects the lowest-RMSE blend and
+reports the best nonzero blend with full and selective refinement, consistency,
+and both stages added independently/together. It also writes per-image CSV
+rows. Add `--max-samples` only for a smoke run; validation tuning should use
+the complete validation split.
+The JSON report is written to `results/hybrid_ablation/summary.json`.

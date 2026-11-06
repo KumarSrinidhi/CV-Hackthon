@@ -56,6 +56,12 @@ def hybrid_hr_depth(
     scale=4,
     *,
     use_consistency=True,
+    classical_weight=None,
+    use_refinement=True,
+    selective_refinement=False,
+    refinement_strength=1.0,
+    consistency_mode="bicubic",
+    operator_exact=True,
     deep_fn=None,
     return_intermediates=False,
 ):
@@ -64,6 +70,10 @@ def hybrid_hr_depth(
     ``deep_fn`` is an injectable replacement for the deep branch (used by tests and
     by users who want to supply their own model). It must match the signature
     ``deep_fn(lr_depth, hr_rgb, valid_mask, scale) -> (H, W) float32``.
+    ``classical_weight`` selects a fixed classical contribution for ablations;
+    when omitted, the normal spatial confidence fusion is used. Refinement and
+    consistency can be disabled independently with ``use_refinement`` and
+    ``use_consistency``.
 
     Raises ``NotImplementedError`` when the deep branch is unavailable (no
     checkpoint, unsupported scale, or missing torch), so evaluation can report
@@ -75,12 +85,30 @@ def hybrid_hr_depth(
     Dc = classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
     Dd = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
 
-    Wc, Wd = estimate_confidence(Dc, Dd, lr_depth, valid_mask, rgb_f, scale)
-    Df = fuse(Dc, Dd, Wc, Wd)
-    Df_boundary = refine_hybrid_depth(Df, rgb_f)
+    if classical_weight is None:
+        Wc, Wd = estimate_confidence(Dc, Dd, lr_depth, valid_mask, rgb_f, scale)
+        Df = fuse(Dc, Dd, Wc, Wd)
+    else:
+        if not 0.0 <= classical_weight <= 1.0:
+            raise ValueError("classical_weight must be between 0 and 1")
+        Wc = np.full_like(Dc, classical_weight, dtype=np.float32)
+        Wd = np.full_like(Dd, 1.0 - classical_weight, dtype=np.float32)
+        Df = fuse_fixed(Dc, Dd, classical_weight)
+    Df_boundary = (
+        refine_hybrid_depth(
+            Df,
+            rgb_f,
+            selective=selective_refinement,
+            strength=refinement_strength,
+        )
+        if use_refinement
+        else Df
+    )
 
     if use_consistency:
-        Df = enforce_consistency(Df_boundary, lr_depth, valid_mask, scale)
+        if not operator_exact:
+            raise ValueError("consistency requires an exact known degradation operator")
+        Df = enforce_consistency(Df_boundary, lr_depth, valid_mask, scale, mode=consistency_mode)
     else:
         Df = Df_boundary
 
@@ -92,6 +120,13 @@ def hybrid_hr_depth(
             "confidence_classical": Wc,
             "confidence_deep": Wd,
             "fused": Df_boundary,
+            "classical_weight": classical_weight,
+            "refinement_enabled": use_refinement,
+            "consistency_enabled": use_consistency,
+            "selective_refinement": selective_refinement,
+            "refinement_strength": refinement_strength,
+            "consistency_mode": consistency_mode,
+            "operator_exact": operator_exact,
         }
     return Df
 

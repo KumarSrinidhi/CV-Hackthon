@@ -65,6 +65,24 @@ def _make_baseline(kind: str) -> Method:
 def load_method(name: str) -> Method:
     if name in BASELINES:
         return _make_baseline(name)
+    if name == "hybrid_fixed02":
+        from hybrid.pipeline import hybrid_hr_depth
+        return lambda lr, rgb, valid, scale=4: hybrid_hr_depth(
+            lr, rgb, valid, scale, classical_weight=0.02,
+            use_refinement=False, use_consistency=False,
+        )
+    if name == "hybrid_adaptive":
+        from hybrid.pipeline import hybrid_hr_depth
+        return lambda lr, rgb, valid, scale=4: hybrid_hr_depth(
+            lr, rgb, valid, scale, use_refinement=False, use_consistency=False,
+        )
+    if name == "hybrid_selected_clean":
+        from hybrid.pipeline import hybrid_hr_depth
+        return lambda lr, rgb, valid, scale=4: hybrid_hr_depth(
+            lr, rgb, valid, scale, classical_weight=0.02,
+            use_refinement=False, use_consistency=True,
+            consistency_mode="bicubic", operator_exact=True,
+        )
     if name not in BRANCHES:
         raise MethodUnavailable(f"unknown method '{name}'")
     mod_name, fn_name = BRANCHES[name]
