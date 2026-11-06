@@ -1,5 +1,10 @@
-# Team Owner: Kumar (Coordinates dependency changes)
-# Workstream: Project Coordination
-# File: requirements.txt
-# Description: Project dependencies agreed upon across deep, classical, hybrid, and app modules.
-
+numpy
+opencv-python
+scipy
+scikit-image
+pillow
+torch
+torchvision
+tqdm
+# Optional: web UI
+# gradio
