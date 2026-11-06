@@ -124,3 +124,76 @@ Entry fields: Experiment ID, Date/time, Research question, Hypothesis, Confirmed
 - **Results:** 100 HF samples vs 150 NYU val: 0 name matches, 0 signature collisions → disjoint populations.
 - **Artifacts:** `tmp/forensics/split_manifest.json`.
 - **Decision:** validation-based selection does not touch the benchmark; documented for §17.3.
+
+---
+
+# Phase 3 — Hypothesis-driven improvements
+
+## P3-E4a — Robustness curriculum fine-tuning (head scope)
+
+**Experiment proposal (plan.txt §8.1 gate):**
+
+1. **Observed failure:** deep branch loses to bicubic under 10% random holes on the val split.
+2. **Evidence:** `results/verify_holes_val150/` — deep RMSE 0.0438 vs bicubic 0.0374 (n=150, hole_ratio 0.1); P1-06: error +41% near holes vs far regions; P1-05: holes-regime headroom.
+   *Note:* historical report (robust_val150) said deep 0.0371 ≈ bicubic 0.0374 (tie); this verification measures deep 0.0438 (worse than tie). Discrepancy recorded honestly; both agree deep's holes advantage collapses.
+3. **Hypothesized cause:** SGNet was trained on clean bicubic LR only; it has no missing-measurement completion prior, and nearest-filled hole boundaries create artifacts the network reproduces.
+4. **Proposed intervention:** fine-tune with a degradation curriculum — training regimes {clean, holes(0.1), noise(σ=0.02), block holes(2), combined} drawn uniformly per step, using `DegradationConfig` so the training operator matches the eval operator. Head scope (only `last_conv`, 62,689 params).
+5. **Why appropriate:** smallest controlled intervention targeting the confirmed failure; operator-consistent degradation prevents train/eval mismatch.
+6. **Expected metric changes:** holes-regime val RMSE down (target: beat bicubic 0.0374 and original deep 0.0438); clean val RMSE approximately preserved (small risk of regression).
+7. **Possible regressions:** clean RMSE/edge F1 degradation; overfit to 0.1 holes at the expense of clean.
+8. **Dataset/split:** NYU train bundle (split train), validation on the 150-image val split (30-image subset per regime), test untouched.
+9. **Estimated GPU time:** ~15 min.
+10. **Memory:** ~4.5 GB peak (patch training).
+11. **Success criteria:** mean val RMSE over {clean, holes} improves over pretrained baseline (0.0327 on the 30-image subset); holes RMSE < 0.0374 (bicubic); clean RMSE no worse than pretrained + 5%.
+12. **Rejection criteria:** clean regression > 5% or holes improvement < 10% → reject, try scope=all next (E4b).
+
+**Configuration:** `python -m deep.finetune_v2 --root nyu_data/nyu_data --epochs 3 --steps-per-epoch 200 --train-regimes clean,holes,noise,block,combined --val-regimes clean,holes --scope head --lr 1e-5 --schedule constant --clip 1.0 --depth-loss l1 --seed 42 --out runs/e4a_head_curriculum`
+Checkpoint provenance: initialized from official `SGNet_X4_R.pth` (`ebab512732b2c629…`); output to `runs/e4a_head_curriculum/` (original checkpoint untouched).
+
+**Results (30-image val subset, metres):**
+
+| epoch | clean | holes | mean |
+|---|---|---|---|
+| pretrained | 0.01230 | 0.05601 | 0.03415 |
+| 1 | 0.01421 | 0.04643 | 0.03032 |
+| 2 | 0.01682 | 0.04185 | 0.02933 |
+| 3 | 0.01861 | 0.03946 | 0.02903 |
+
+Peak VRAM 3.47 GB; ~0.9 s/step incl. data.
+
+**Decision: REJECT** (pre-registered criterion: clean regression > 5%). Holes improved 30% but clean regressed +51% — head-only adaptation monotonically trades clean accuracy for hole filling; it cannot learn regime-conditional behaviour. Proceed to pre-registered fallback E4b (scope=all, lr 1e-6).
+
+## P3-E4b — Robustness curriculum fine-tuning (full model, low LR)
+
+**Experiment proposal:** identical to P3-E4a except: **scope=all** (36.4 M params trainable), **lr=1e-6** (plan §8.4 range for full fine-tuning), **schedule=cosine**, epochs 3.
+- Hypothesis: full-model capacity can learn hole-conditional behaviour (the network can detect nearest-filled hole statistics and respond) without the head-only clean/holes trade-off.
+- Success: mean val RMSE improves AND clean regression ≤ 5% AND holes improvement ≥ 10%.
+- Rejection: clean regression > 5% (vs pretrained 0.01230) or holes RMSE > 0.0504.
+
+**Configuration:** `python -m deep.finetune_v2 --root nyu_data/nyu_data --epochs 3 --steps-per-epoch 200 --train-regimes clean,holes,noise,block,combined --val-regimes clean,holes --scope all --lr 1e-6 --schedule cosine --clip 1.0 --depth-loss l1 --seed 42 --out runs/e4b_all_curriculum`
+
+**Results (30-image val subset, metres):**
+
+| epoch | clean | holes | mean |
+|---|---|---|---|
+| pretrained | 0.01230 | 0.05601 | 0.03415 |
+| 1 | 0.01266 | 0.04621 | 0.02944 |
+| 2 | 0.01288 | 0.04346 | 0.02817 |
+| 3 (best) | 0.01289 | 0.04333 | 0.02811 |
+
+Peak VRAM 3.76 GB; ~2.7 s/step (full-model backward).
+
+**Decision: KEEP (provisional, pending full-split confirmation).** Pre-registered success criteria met: mean improved 17.7%; holes −22.6%; clean regression +4.8% (≤ 5% limit, borderline).
+
+**Full val150 confirmation, original vs E4b-best (n=150, `results/{original,e4b}_val150_*/`):**
+
+| regime | bicubic | original deep | E4b deep | Δ vs original |
+|---|---|---|---|---|
+| clean | 0.0292 (F1 0.211) | 0.0087 (F1 0.959) | 0.0090 (F1 0.954) | +3.4% RMSE |
+| holes 10% | 0.0374 (F1 0.231) | 0.0438 (F1 0.817) | **0.0344** (F1 0.855) | −21.5%, now beats bicubic |
+| noise σ=0.02 | 0.0345 (F1 0.212) | 0.0312 (F1 0.844) | **0.0227** (F1 0.855) | −27.2% |
+| noise σ=0.05 | 0.0529 (F1 0.218) | 0.0741 (F1 0.594, worse than bicubic) | **0.0315** (F1 0.677) | −57.5% |
+
+The confirmed missing-depth/noise weaknesses are substantially fixed; clean cost is +3.4% RMSE (0.0087→0.0090) and −0.005 edge F1. The original's strong-noise performance was *worse than bicubic*; E4b restores a large margin.
+
+**Artifacts:** `runs/e4b_all_curriculum/` (best.pth = epoch 3; `runs/` is gitignored — checkpoint SHA256 recorded in `docs/DEEP_MODEL_IMPROVEMENTS.md`), `results/e4b_val150_{clean,holes,noise,noise_strong}/`, `results/original_val150_{clean,holes,noise,noise_strong}/`, `results/verify_holes_val150/`.
