@@ -145,6 +145,34 @@ numbers as paper-comparable; quote them as "HF NYU val subset, x4, this machine"
 **Final 479-sample table** (see section 0 — full run, 0 failures, results written to
 `results/hf_nyu_val_x4/{per_image.csv, summary.json, summary.md}`).
 
+### 3-track comparison — all branches, same 100 samples, same protocol (official harness)
+
+`python scripts/eval_all3_hf.py --tars datasets/val-000000.tar --max-samples 100`
+→ `results/hf_nyu_val_x4_all3/` (per-image CSV + JSON + MD, official `evaluate_methods`)
+
+| method | RMSE (m) | MAE (m) | PSNR (dB) | SSIM | boundary RMSE | edge F1 | latency ms |
+|---|---|---|---|---|---|---|---|
+| nearest | 0.0535 | 0.0162 | 48.27 | 0.9890 | 0.2465 | 0.739 | 2.7 |
+| bilinear | 0.0415 | 0.0132 | 50.53 | 0.9934 | 0.1943 | 0.205 | 2.8 |
+| bicubic | 0.0367 | 0.0121 | 51.62 | 0.9942 | 0.1680 | 0.259 | 2.8 |
+| classical | 0.0584 | 0.0191 | 47.59 | 0.9874 | 0.2591 | 0.671 | 463.9 |
+| **deep** | **0.0101** | **0.0030** | **62.64** | **0.9994** | **0.0434** | **0.960** | 1899.3 |
+| hybrid | 0.0298 | 0.0077 | 53.85 | 0.9966 | 0.1389 | 0.804 | 2509.3 |
+
+**Honest reading of the 3-way result (clean bicubic ×4 degradation, n=100):**
+- **Deep wins outright on quality**: 3.6× lower RMSE than the next best (hybrid), 4.2×
+  lower boundary RMSE, near-perfect edge recovery (F1 0.960).
+- **Hybrid is second on quality but last on speed**: it beats bicubic clearly
+  (RMSE −19%, boundary RMSE −17%, edge F1 0.80 vs 0.26) but is *worse than deep alone*
+  while costing +32% latency (2.51 s vs 1.90 s — it runs classical AND deep internally).
+  On this clean protocol the fusion does not pay for itself; its value case is the
+  degraded regimes (noise/holes) and scales/inputs where deep confidence is low —
+  see `results/robust_*` from the deep branch for those experiments.
+- **Classical is the weakest on RMSE** (worse than bicubic: 0.0584 vs 0.0367) but recovers
+  real edges (F1 0.671 vs bicubic's 0.259) at 465 ms — a middle ground, and the only
+  track that runs without any checkpoint or torch.
+- Latencies are per-image on the RTX 5070 GPU at 480×640; baselines are CPU cv2.
+
 ## 6. Full history log (append-only)
 
 | # | Time (local) | Action | Result |
@@ -168,6 +196,7 @@ numbers as paper-comparable; quote them as "HF NYU val subset, x4, this machine"
 | 17 | 00:20–00:45 | Resumed tar download; reached 688 MB = **479 readable .h5 samples** | done |
 | 18 | 00:46–01:07 | Full GPU eval, 479 samples × (bicubic + deep), real checkpoint | **COMPLETED, 479/479, 0 failures** — see section 0 table |
 | 19 | 01:10 | Wrote this report; results in `results/hf_nyu_val_x4/` | done |
+| 20 | 01:25 | 3-track comparison: classical + deep + hybrid (+ 3 baselines), same 100 HF NYU samples, official `evaluate_methods` harness | COMPLETED — all 6 methods evaluated, 0 failures; table + honest reading in section 0/5 |
 
 **Files created/changed by this session:**
 - `pyproject.toml` — cu128 torch index pin + `scikit-image` dependency
