@@ -151,3 +151,36 @@ def compute_all_metrics(
     }
     out.update(edge_scores(pred, gt, data_range, rel_thresh=rel_thresh, tol=edge_tol, mask=m))
     return out
+
+
+def quality(pred, gt, valid, sparse=False, peak=10.0):
+    """Evaluation metrics for the real-depth protocol.
+
+    Returns rmse_m / mae_m / boundary_rmse_m in metres, psnr_db / ssim / edge_f1
+    (fixed data_range = ``peak``), and coverage. For sparse depth, the structural
+    metrics are None because the evaluation support is too sparse to be meaningful.
+    """
+    pred = np.asarray(pred, dtype=np.float32)
+    gt = np.asarray(gt, dtype=np.float32)
+    m = eval_mask(pred, gt, valid, border=0)
+    n_valid = int(np.count_nonzero(valid)) if valid is not None else int(gt.size)
+    if not m.any():
+        return {
+            "rmse_m": None, "mae_m": None, "psnr_db": None, "ssim": None,
+            "edge_f1": None, "boundary_rmse_m": None, "coverage": 0.0,
+        }
+    coverage = float(m.sum() / n_valid) if n_valid else 0.0
+    e = pred[m].astype(np.float64) - gt[m].astype(np.float64)
+    out = {
+        "rmse_m": float(np.sqrt(np.mean(e * e))),
+        "mae_m": float(np.mean(np.abs(e))),
+        "coverage": coverage,
+    }
+    if sparse:
+        out.update({"psnr_db": None, "ssim": None, "edge_f1": None, "boundary_rmse_m": None})
+    else:
+        out["psnr_db"] = psnr(pred, gt, peak, mask=m)
+        out["ssim"] = ssim(pred, gt, peak, mask=m)
+        out["edge_f1"] = edge_scores(pred, gt, peak, mask=m, min_pixels=1)["edge_f1"]
+        out["boundary_rmse_m"] = boundary_rmse(pred, gt, peak, mask=m, min_pixels=1)
+    return out

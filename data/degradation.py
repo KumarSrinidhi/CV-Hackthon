@@ -124,3 +124,21 @@ def degrade(
         "operator_exact": bool(cfg.is_clean and (valid_hr is None or valid_hr.all())),
         "config": cfg.as_dict(),
     }
+
+
+def center_sample(depth: np.ndarray, scale: int) -> np.ndarray:
+    """Sample the centre pixel of each ``scale`` x ``scale`` block (the real-depth
+    centre-sampling protocol)."""
+    d = np.asarray(depth, dtype=np.float32)
+    return d[scale // 2 :: scale, scale // 2 :: scale].copy()
+
+
+def holdout_mask(valid: np.ndarray, scales) -> np.ndarray:
+    """Return ``valid`` with the centre-sampled pixels (for each scale) removed.
+
+    Those pixels were fed to the model as input, so they must not be scored as
+    unseen evaluation evidence."""
+    mask = np.asarray(valid, dtype=bool).copy()
+    for s in scales:
+        mask[s // 2 :: s, s // 2 :: s] = False
+    return mask

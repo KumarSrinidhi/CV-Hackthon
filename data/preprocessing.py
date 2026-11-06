@@ -165,3 +165,20 @@ def minmax_normalize(depth: np.ndarray, lo: float, hi: float) -> np.ndarray:
 
 def minmax_denormalize(x: np.ndarray, lo: float, hi: float) -> np.ndarray:
     return (x.astype(np.float32) * np.float32(hi - lo) + np.float32(lo)).astype(np.float32)
+
+
+def evaluation_crop(rgb, target, max_scale, peak=None):
+    """Crop RGB and depth to multiples of ``max_scale`` and build the GT validity mask.
+
+    ``peak`` optionally clamps the target depth to a fixed metric ceiling (used for
+    PSNR/SSIM data range on dense datasets).
+    """
+    rgb = np.asarray(rgb)
+    target = np.asarray(target, dtype=np.float32)
+    h, w = target.shape[:2]
+    H, W = h - h % max_scale, w - w % max_scale
+    rgb, target = rgb[:H, :W], target[:H, :W]
+    valid = np.isfinite(target) & (target > 0)
+    if peak is not None:
+        target = np.minimum(target, np.float32(peak))
+    return rgb, target, valid

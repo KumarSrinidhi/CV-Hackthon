@@ -268,3 +268,28 @@ def get_dataset(
             "claim is made. See deep/README_DEEP.md."
         )
     raise ValueError(f"Unknown dataset '{name}'. Use one of: nyu, middlebury, lu.")
+
+
+def read_rgb(path):
+    """Read an image as RGB uint8 (BGR -> RGB)."""
+    import cv2
+
+    img = cv2.imread(str(path), cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError(f"Could not read RGB image: {path}")
+    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+
+def manifest_frames(csv_path):
+    """Yield (group, frame, rgb, depth) rows from a CSV manifest.
+
+    Columns: ``frame`` (id), ``rgb`` (image path), ``depth`` (.npy path), optional
+    ``group``. Used by the real-depth evaluation CLI.
+    """
+    import csv
+
+    with open(csv_path, newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            group = row.get("group", row.get("dataset", "nyu"))
+            frame = row["frame"] if "frame" in row else Path(row["depth"]).stem
+            yield (group, frame, read_rgb(row["rgb"]), np.load(row["depth"]))

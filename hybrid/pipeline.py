@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 
 from classical import classical_hr_depth
-from classical.jbu import to_float_rgb
+from data.preprocessing import to_float_rgb
 
 from .boundary_refinement import refine_hybrid_depth
 from .confidence import estimate_confidence

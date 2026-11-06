@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from classical import classical_hr_depth
+from classical.interpolation import interpolate_depth
 from classical.pipeline import reconstruct
 from hybrid import hybrid_hr_depth
 
@@ -22,11 +23,20 @@ def _fake_deep(value=3.0, shape=(16, 16)):
     return fn
 
 
-@pytest.mark.parametrize("method", ["nearest", "bilinear", "bicubic", "jbu", "guided",
-                                   "classical", "adaptive_jbu", "refined_jbu"])
+@pytest.mark.parametrize("method", ["nearest", "bilinear", "bicubic"])
+def test_interpolation_baselines(method):
+    lr, _ = _scene(4)
+    out = interpolate_depth(lr, None, 4, method)
+    assert out.shape == (16, 16)
+    assert out.dtype == np.float32
+    assert np.isfinite(out).all()
+
+
+@pytest.mark.parametrize("method", ["jbu", "guided", "classical", "adaptive_jbu",
+                                   "refined_jbu", "masked_jbu", "tuned_jbu"])
 def test_classical_methods_produce_valid_output(method):
     lr, rgb = _scene(4)
-    out = reconstruct(lr, rgb, None, 4, method)
+    out = reconstruct(lr, rgb, None, 4, method=method)
     assert out.shape == (16, 16)
     assert out.dtype == np.float32
     assert np.isfinite(out).all()

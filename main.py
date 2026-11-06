@@ -18,10 +18,12 @@ import numpy as np
 
 from app.visualization import depth_colormap, export_npy, export_png
 from classical import classical_hr_depth
+from classical.interpolation import interpolate_depth
 from classical.pipeline import reconstruct as classical_reconstruct
 
-_CLASSICAL = {"nearest", "bilinear", "bicubic", "jbu", "guided", "classical",
-              "adaptive_jbu", "refined_jbu"}
+_INTERP = {"nearest", "bilinear", "bicubic"}
+_CLASSICAL = {"jbu", "guided", "classical", "depth_only", "no_refinement",
+              "masked_jbu", "tuned_jbu", "adaptive_jbu", "refined_jbu"}
 
 
 def load_image(path):
@@ -46,6 +48,10 @@ def reconstruct(rgb, lr_depth, valid_mask=None, scale=4, method="hybrid"):
     lr = np.asarray(lr_depth, dtype=np.float32)
     if lr.ndim == 3 and lr.shape[2] == 1:
         lr = lr[..., 0]
+
+    if method in _INTERP:
+        hr = interpolate_depth(lr, valid_mask, scale, method)
+        return {"depth": hr, "method": method, "intermediates": {}}
 
     if method in _CLASSICAL:
         hr = classical_reconstruct(lr, rgb, valid_mask, scale, method=method)

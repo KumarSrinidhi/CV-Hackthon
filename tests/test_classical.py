@@ -142,3 +142,27 @@ def test_agreement_can_use_a_nearby_rgb_edge():
     band, agreement, _ = edge_evidence(depth, rgb)
     assert agreement[:, 15].all()
     assert not (agreement & ~band).any()
+
+
+@pytest.mark.parametrize("method", ["jbu", "masked_jbu", "tuned_jbu", "adaptive_jbu", "refined_jbu"])
+def test_rgb_outlier_preserves_valid_constant_depth(method):
+    depth = np.array([[3.25]], dtype=np.float32)
+    rgb = np.zeros((2, 2, 3), dtype=np.uint8)
+    rgb[0, 0] = 255
+    output = reconstruct(depth, rgb, None, 2, method=method)
+    np.testing.assert_allclose(output, 3.25, atol=1e-6)
+
+
+def test_jbu_spatial_fallback_respects_mask_radius_and_anchor():
+    from classical.jbu import joint_bilateral_upsample
+
+    depth = np.array([[2, 6, 99, 0, 0]], dtype=np.float32)
+    valid = np.array([[True, True, False, False, False]])
+    rgb = np.zeros((2, 10, 3), dtype=np.float32)
+    rgb[0, 2] = 1
+    anchor = np.zeros((2, 10), dtype=np.float32)
+    anchor[0, 2] = 6
+    output = joint_bilateral_upsample(depth, valid, rgb, radius=1, protected_anchor=anchor)
+    assert output[0, 2] == pytest.approx(6)
+    assert output.max() == pytest.approx(6)
+    assert not output[:, -4:].any()
