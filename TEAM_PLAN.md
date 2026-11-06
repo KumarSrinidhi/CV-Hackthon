@@ -1,187 +1,702 @@
-# PS4 — Edge-Preserving Depth Map Upsampling & Refinement · Team Plan & Task Board
+# P4 — Phased Implementation Plan
+## Hybrid Depth-Map Super-Resolution
 
-> **Claim a task:** put your name/handle in the **Owner** column, comment on the repo, and work on the matching feature branch. Push small commits often. Open a PR when your task is done (PR title = task ID).
-
-**ProbID P4:** build an intelligent, edge-aware depth reconstruction system that turns **sparse / low-resolution depth maps** into **dense, high-resolution depth**, preserving object boundaries and depth discontinuities. RGB guidance available. Must compare **interpolation vs classical refinement vs deep learning vs hybrid**, support **2×/4×/8×**, handle **missing + noisy depth**, and report **RMSE, MAE, PSNR, SSIM, edge preservation, boundary accuracy, latency, memory**.
-
-**Timeline:** ~1 week · **DL hardware:** Colab GPUs · **Dataset:** NYU Depth v2 (labeled, primary)
-
----
-
-## 0. Mandatory Deliverables (from the PDF Instruction Sheet — do not skip)
-
-These are what actually get graded. Missing any of these caps a rubric category hard.
-
-| # | Deliverable | Owner | Due |
-|---|---|---|---|
-| **D1** | **Live hosted application URL** (public, works on phone + laptop) | P3 | Day 5 |
-| **D2** | **Complete source code** in GitHub | all | ongoing |
-| **D3** | **`docs/architecture.md`** — system architecture diagram matching the code | P4 | Day 1 |
-| **D4** | **`docs/DESIGN.md`** — design document (every template section; use organizer template if provided) | P4 | Day 3 |
-| **D5** | **`eval_P4_T<teamID>.md`** — metrics in PDF order, **first line = all USNs comma-separated** | P2 | Day 5 |
-| **D6** | **Ablation study + failure-case analysis** (in README + design doc) | P1/P4 | Day 5 |
-| **D7** | **`Dockerfile` or one-command run; no secrets committed** | P4 | Day 1 |
-
-**Rubric weights:** Demo/viva 25 · Evaluation metrics 25 · Implementation 20 · UI/UX + deployment 15 · Documentation 15.
+**Team:** Rakshitha · Tanush · Rishita · Kumar  
+**Sprint duration:** 20 hours  
+**Hardware:** RTX 5050 Laptop GPU (8 GB VRAM), 32 GB RAM  
+**Primary objective:** Build, integrate and evaluate a hybrid depth-map super-resolution system using independent deep-learning and classical-computer-vision branches.
 
 ---
 
-## 1. Quick Start (everyone, Day 0)
+## 1. Project Goal
 
-```bash
-git clone https://github.com/KumarSrinidhi/CV-Hackthon.git
-cd CV-Hackthon
-uv sync                      # creates .venv from uv.lock (Python 3.12)
-uv run python -c "import cv2, numpy, torch; print('env OK')"
-uv run pytest tests/         # should pass once your task's tests exist
-uv run python -m ps4.cli --help   # one-command entry point
-```
+Given a high-resolution RGB guidance image and a low-resolution depth map, reconstruct a high-resolution depth map by combining:
 
-- **Env manager: UV only.** Add deps with `uv add <pkg>` (updates `uv.lock`) — never pip/conda. Commit the lock change with your task.
-- Scratch files, datasets, big downloads → **`tmp/` only** (gitignored).
-- **Never commit:** `.mat`, weights >50MB, datasets, `.venv/`, `tmp/`, secrets/keys. Weights go to Google Drive/Release link → paste link in README weights table.
+1. **Deep-learning branch** — implemented and evaluated by Rakshitha.
+2. **Classical CV branch** — implemented by Tanush.
+3. **Hybrid fusion branch** — implemented by Rishita.
+4. **Application and integration** — implemented by Kumar.
 
-## 2. Repo Layout (target)
+The two reconstruction branches must work independently before they are combined. The final hybrid must be compared fairly against both standalone branches and simple interpolation baselines.
 
-```
-CV-Hackthon/
-├── pyproject.toml  uv.lock  .python-version     # UV project at ROOT
-├── .gitignore                # tmp/, data/, *.mat, weights/, outputs/, __pycache__/
-├── Dockerfile
-├── .env.example
-├── TEAM_PLAN.md              # ← this file
-├── README.md                 # final report: results, ablations, failure analysis, ethics
-├── eval_P4_T<teamID>.md      # required metric file (USNs on line 1)
-├── docs/
-│   ├── architecture.md       # mermaid diagram matching code
-│   └── DESIGN.md             # design doc
-├── src/ps4/
-│   ├── data/     loader.py  preprocess.py  degrade.py
-│   ├── classical/ interp.py jbf.py guided.py edges.py holes.py refine.py
-│   ├── deep/     model.py losses.py train.py infer.py
-│   ├── hybrid/   fuse.py
-│   ├── eval/     metrics.py benchmark.py viz.py ablation.py
-│   ├── app/      gradio_app.py
-│   └── cli.py
-├── configs/      benchmark.yaml  train.yaml
-├── notebooks/    colab_train.ipynb
-├── tests/        test_classical.py  test_data.py  test_metrics.py
-└── tmp/          # GITIGNORED — data cache, scratch, local experiments
-```
+## 2. Team Ownership
 
-## 3. Git Workflow
-
-- `master` = stable, always-runnable. Do **not** commit to master directly (except small doc fixes).
-- Branch per track: `feat/classical`, `feat/data-eval`, `feat/deep`, `feat/hybrid-app`, `feat/docs`
-- **Commit small & push often.** PR per task; one review, then merge.
-- Commit messages: `P4-<task-id>: <what>` e.g. `P4-A3: implement own guided filter with box filters`
-
----
-
-## 4. Ownership (3–4 people)
-
-| Person | Role | Owns |
+| Member | Workstream | Ownership |
 |---|---|---|
-| **P1** | Classical + Hybrid | Track A (A1–A7) + Track D (D1–D2) |
-| **P2** | Data + Evaluation | Track B (B1–B6) |
-| **P3** | Deep Learning + App + Hosting | Track C (C1–C7) |
-| **P4** | Docs + Delivery (shared/flex) | F4–F5, D3–D7; writes own sections into P1–P3 work |
+| **Rakshitha** | Deep Learning + Data + Evaluation | Deep model integration, dataset pipeline, preprocessing, metrics and benchmark execution |
+| **Tanush** | Classical Computer Vision | Interpolation baselines, JBU, guided filtering, hole handling and classical pipeline |
+| **Rishita** | Hybrid Fusion | Confidence estimation, branch fusion, measurement consistency and boundary refinement |
+| **Kumar** | Application + Integration + Deployment | UI, visualization, integration, repository coordination and final documentation |
 
-With only 3 people, merge P4 into P1/P2/P3 and have P3 also own the design doc + diagram.
+### 2.1 Rakshitha — Deep Learning, Data and Evaluation
 
-## 5. Task Board
+**Deep-learning responsibilities**
+- Verify the official SGNet implementation, checkpoint, license and inference instructions.
+- Verify the model's actual input/output contract and supported scale factors.
+- Run a real forward pass on the RTX 5050 GPU; check latency and peak memory.
+- Confirm that the model is intended for depth super-resolution and that its preprocessing matches the project data.
+- Evaluate first on datasets/scales supported by the verified implementation and paper.
+- Investigate KITTI separately. KITTI sparse LiDAR depth completion is not automatically equivalent to dense depth super-resolution.
+- If SGNet is infeasible, time-box investigation of a task-appropriate alternative. Do not add a generic U-Net fallback.
 
-### 🔧 Day 0 — Foundation (blocking everything else)
+**Data responsibilities**
+- Prepare NYU-v2 and Middlebury loaders.
+- Investigate KITTI format, alignment and sparse-depth handling if KITTI is included.
+- Implement RGB-depth alignment and consistent depth units.
+- Implement the exact low-resolution degradation protocol used by experiments.
+- Create the original validity mask before any interpolation or hole filling.
+- Preserve `depth_original`, `valid_mask_original` and branch-specific working copies.
+- Create leakage-safe train/validation/test splits.
 
-| ID | Task | Files | Owner | Done when | Depends |
-|----|------|-------|-------|-----------|---------|
-| **F1** | Move `pyproject.toml`, `uv.lock`, `.python-version` from `tmp/` to root; write `.gitignore`; create `src/ps4/` skeleton + `cli.py` stub | root, `src/ps4/**` | _unclaimed_ | `uv sync && uv run pytest` green; `python -m ps4.cli --help` works | — |
-| **F2** | Download `nyu_depth_v2_labeled.mat` (~2.8GB) → `tmp/data/`. Primary: NYU official page; fallbacks Kaggle/HF. Document exact URL in `src/ps4/data/README.md` | `tmp/data/` | _unclaimed_ | File loadable (scipy.io/h5py), URL documented | F1 |
-| **F3** | Preprocess `.mat` → per-image `.npz` cache (RGB, depth meters, labels). Eigen split 795 train / 654 test, hold 50 val. Write `configs/splits/*.txt` | `data/loader.py`, `data/preprocess.py` | _unclaimed_ | `python -m ps4.data.preprocess` → 1499 npz + splits <10 min | F2 |
-| **F4** | `docs/DESIGN.md` skeleton + `docs/architecture.md` (mermaid diagram v1); confirm organizer design-doc template | `docs/*` | _unclaimed_ | Diagram v1 + design skeleton merged | F1 |
-| **F5** | `Dockerfile` + `.env.example`; verify one-command run; confirm no secrets in repo | root | _unclaimed_ | `docker build`/`uv run` works; `git ls-files` has no keys | F1 |
-| **F6** | Record Team ID + USN list; choose hosting (recommend Hugging Face Spaces) | `configs/team.yaml` | _unclaimed_ | `TEAM_ID` + `USNS` filled in config | — |
+**Evaluation responsibilities**
+- Implement common metrics and evaluation scripts.
+- Ensure all branches use the same held-out samples, scales, depth units and evaluation mask.
+- Record inference latency and peak GPU memory.
+- Produce the final comparison tables and plots.
 
-### 📐 Track A — Classical CV (P1, CPU, numpy/OpenCV)
+**Deliverables**
+```text
+deep/
+  deep_model.py
+  inference.py
 
-| ID | Task | Files | Owner | Done when | Depends |
-|----|------|-------|-------|-----------|---------|
-| **A1** | Interpolation baselines NN/bilinear/bicubic; uniform `upsample(lr, rgb, factor, method)` | `classical/interp.py` | _unclaimed_ | 1× round-trip ≈ identity; 2/4/8× all work | F1 |
-| **A2** | **Own guided filter** (He et al., box-filter O(N)) + `cv2.ximgproc.guidedFilter` cross-check (<1e-2 abs diff) | `classical/guided.py`, `tests/test_classical.py` | _unclaimed_ | Cross-check test green | A1 |
-| **A3** | Joint bilateral filter (brute force small radius + fast approx for 8×); auto params | `classical/jbf.py` | _unclaimed_ | Edges crisper than bicubic on 3 samples | A1 |
-| **A4** | Edge + depth-discontinuity detection (Sobel/Canny, gradient thresh + morph), confidence maps | `classical/edges.py` | _unclaimed_ | Boundary overlay correct on 3 samples | A1 |
-| **A5** | Hole filling + denoising (morph dilate → JBF inpaint; median/bilateral; `cv2.inpaint` check) | `classical/holes.py` | _unclaimed_ | 30% holes filled; PSNR improves over raw fill | A2, A3 |
-| **A6** | Boundary-aware classical refinement (edge-aware near boundaries, smooth in flat regions) | `classical/refine.py` | _unclaimed_ | Boundary RMSE improves vs plain JBF | A2–A4 |
-| **A7** | Bad-input handling: missing/empty depth, mismatched RGB/depth size, all-zero depth, non-square → graceful fallback + error msg | `classical/*`, `cli.py` | _unclaimed_ | Bad inputs raise clear errors, never crash silently | A1 |
+data/
+  dataset.py
+  preprocessing.py
+  degradation.py
 
-### 📊 Track B — Data + Evaluation (P2)
+eval/
+  metrics.py
+  evaluate.py
+  benchmark.py
+```
 
-| ID | Task | Files | Owner | Done when | Depends |
-|----|------|-------|-------|-----------|---------|
-| **B1** | Degradation sim: 2/4/8× (box+subsample), 500-pt sparse (+gradient-dense), σ 1–3cm noise, 10–30% holes, boundary erosion; seeded | `data/degrade.py`, `tests/test_data.py` | _unclaimed_ | Determinism + round-trip tests green | F3 |
-| **B2** | Metrics: RMSE, MAE (meters, valid-GT), PSNR, SSIM (norm), boundary-RMSE (dilated GT-discontinuity band), edge-F1 (depth-Sobel), grad-preservation | `eval/metrics.py`, `tests/test_metrics.py` | _unclaimed_ | Sanity tests green (identity→0, degraded→worse) | F3 |
-| **B3** | Benchmark runner `method × factor(2/4/8) × noise` → pandas → CSV + Markdown; per-run config JSON | `eval/benchmark.py`, `configs/benchmark.yaml` | _unclaimed_ | Every cell filled; val 50 in <30 min | A1–A3, B2 |
-| **B4** | Visualization: error heatmaps, GT vs pred, boundary overlay (GT red / pred cyan), zoomed crops | `eval/viz.py` | _unclaimed_ | 3+ figure sets from benchmark | B3 |
-| **B5** | Latency + memory harness (CPU classical + **DL CPU inference path used by app**); params count | `eval/benchmark.py` | _unclaimed_ | Latency/memory columns in table | B3 |
-| **B6** | Generate `eval_P4_T<teamID>.md`: metrics in PDF order (RMSE/MAE → PSNR/SSIM → edge/boundary → per-factor → latency/memory), **line 1 = comma-separated USNs** | `eval_P4_*.md` | _unclaimed_ | File named correctly, USN header, metric order matches PDF | B3, F6 |
+Required wrapper:
+```python
+def deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale=4):
+    ...
+```
 
-### 🧠 Track C — Deep Learning + App + Hosting (P3, Colab GPU)
+The wrapper must adapt to the verified model contract. Do not assume the pretrained model accepts an extra validity-mask channel.
 
-| ID | Task | Files | Owner | Done when | Depends |
-|----|------|-------|-------|-----------|---------|
-| **C1** | Unified U-Net (~2M params): [depth, validity mask, RGB] → dense depth; SR + completion in one model | `deep/model.py` | _unclaimed_ | 256²→256² forward passes; ≤3M params | F1 |
-| **C2** | Losses: masked L1 + multi-scale Sobel gradient + optional SILog; edge-weighted variant | `deep/losses.py` | _unclaimed_ | Loss decreases on 10-patch overfit | C1 |
-| **C3** | Colab training notebook: 256² patches, flips, RGB jitter, AMP, AdamW, cosine, checkpoints, val RMSE | `notebooks/colab_train.ipynb`, `deep/train.py` | _unclaimed_ | Run #1 val RMSE < bicubic | C1, C2, B1, F3 |
-| **C4** | Fine-tune with randomized degradation (sparsity/noise/factor); early stop; export weights + `infer.py` | `deep/train.py`, `deep/infer.py` | _unclaimed_ | Fine-tuned beats run #1 on all factors; weights link in README | C3 |
-| **C5** | **Gradio app scaffold Day 2 with classical methods (runs before DL exists)** | `app/gradio_app.py`, `cli.py` | _unclaimed_ | Local app serves classical methods on Day 2 | A1–A6 |
-| **C6** | Wire DL + hybrid into app; add loading spinner, error states, phone+laptop responsive | `app/gradio_app.py` | _unclaimed_ | All methods selectable; error/loading states present | C4, D2 |
-| **C7** | **Deploy to HF Spaces (public URL) Day 5**; verify <10s on CPU; confirm no secrets | deployment | _unclaimed_ | Public URL works from phone + laptop | C6, F5 |
+### 2.2 Tanush — Classical Computer Vision
 
-### 🧬 Track D — Hybrid + Report (P1/P4)
+**Baselines**
+- Nearest-neighbor interpolation.
+- Bilinear interpolation.
+- Bicubic interpolation.
 
-| ID | Task | Files | Owner | Done when | Depends |
-|----|------|-------|-------|-----------|---------|
-| **D1** | Hybrid v1: guided-filter residual correction GF(residual = known − upsampled) anchored at valid pixels; depth-domain ⇒ no texture-copy | `hybrid/fuse.py` | _unclaimed_ | Boundary RMSE improves over uncorrected DL | A2, C4 |
-| **D2** | Hybrid v2: confidence fusion (RGB-gradient confidence + local error at valid pixels) blends DL vs classical | `hybrid/fuse.py` | _unclaimed_ | Beats both parents on ≥2 of {RMSE, boundary-RMSE, edge-F1} | D1, A6 |
-| **D3** | Ablations: no-RGB, no-edge-loss, no-hybrid, each classical component removed | `eval/ablation.py` | _unclaimed_ | Ablation table with deltas in README | B3, C4, D2 |
-| **D4** | Robustness + unseen eval (654 test), noise/hole sweeps, failure analysis incl. **texture-copy case check** | README section | _unclaimed_ | Sweep plots + ≥3 failure cases (incl. texture-copy) | B3, C4 |
-| **D5** | Final README: methods, tables, ablations, latency/memory, failure analysis, run steps, weights links | `README.md` | _unclaimed_ | Stranger reproduces results from clean clone | all |
-| **D6** | Limitations + ethics section (depth privacy, deployment honesty, bias) | `README.md`, `docs/DESIGN.md` | _unclaimed_ | Ethics/limitations stated honestly | all |
-| **D7** | 3-min demo script + viva prep: each member explains their part, metrics, a failure case | demo notes | _unclaimed_ | Dry-run demo; everyone answers their part | D5, D6 |
+**Classical reconstruction**
+- Joint Bilateral Upsampling (JBU).
+- Guided Filtering.
+- Boundary-aware Joint Bilateral Filtering.
+- Conservative depth-hole filling.
+- Invalid-depth handling.
+
+**Boundary and artifact handling**
+- Use RGB Sobel/Canny edges as guidance, not as ground-truth depth boundaries.
+- Use depth discontinuities as primary boundary evidence.
+- Avoid transferring RGB texture edges into the reconstructed depth map.
+- Avoid smoothing across genuine depth discontinuities.
+- Preserve the original depth map and validity mask; do not overwrite them with filled values.
+
+**Evaluation**
+- Compare the classical methods on validation data.
+- Tune parameters without using test ground truth.
+- Select the best-performing classical pipeline.
+- Report quality, runtime and failure cases.
+
+**Deliverables**
+```text
+classical/
+  interpolation.py
+  jbu.py
+  guided_filter.py
+  boundary_refinement.py
+  hole_filling.py
+  pipeline.py
+```
+
+Required wrapper:
+```python
+def classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale=4):
+    ...
+```
+
+### 2.3 Rishita — Hybrid Fusion
+
+**Branch integration**
+- Consume the outputs from Rakshitha and Tanush: deep HR depth `D_d` and classical HR depth `D_c`.
+- Do not duplicate either reconstruction branch.
+- Validate that both outputs have matching dimensions, units and compatible invalid-value conventions.
+
+**Confidence-guided fusion**
+- Estimate branch confidence using available evidence such as depth gradients, RGB/depth edge agreement, original validity information, distance to valid measurements, model uncertainty (if available) and reconstruction residuals.
+- Normalize weights so that `W_c + W_d = 1`.
+- Fuse:
+
+  \[
+  D_f = W_c D_c + W_d D_d
+  \]
+
+- Calibrate weights on validation data. Do not present arbitrary hand-picked confidence formulas as calibrated confidence.
+
+**Measurement consistency**
+- If the synthetic degradation operator is known, compute:
+
+  \[
+  r_{LR} = D_{LR} - S(D_f)
+  \]
+
+- Use the residual to correct the fused output.
+- For real sensor data with unknown formation/degradation, do not claim exact consistency. Anchor known measurements only where justified.
+
+**Adaptive boundary refinement**
+- Use depth evidence as the primary boundary signal.
+- Use RGB guidance as supporting evidence.
+- Refine likely depth boundaries while avoiding texture copying and oversmoothing.
+
+**Ablations**
+1. Classical only.
+2. Deep only.
+3. Fixed-weight fusion.
+4. Confidence-guided fusion.
+5. Confidence-guided fusion plus boundary refinement.
+6. Final hybrid with consistency correction where the forward operator is known.
+
+**Deliverables**
+```text
+hybrid/
+  confidence.py
+  fusion.py
+  consistency.py
+  boundary_refinement.py
+  pipeline.py
+```
+
+Required wrapper:
+```python
+def hybrid_hr_depth(lr_depth, hr_rgb, valid_mask, scale=4):
+    ...
+```
+
+### 2.4 Kumar — Application, Integration and Deployment
+
+**Application**
+- RGB image upload.
+- LR depth-map upload.
+- Optional validity-mask upload.
+- Scale selection.
+- Method selection: Classical, Deep or Hybrid.
+- Output depth visualization.
+- Side-by-side branch comparison.
+- Confidence map and error map when applicable.
+- PNG and NPY export.
+- Optional PLY export if time permits.
+
+**Integration**
+- Create the application entry point and connect the stable branch interfaces.
+- Own application configuration and coordinate dependency-file changes.
+- Add input validation and clear error messages.
+- Run end-to-end tests.
+- Optimize memory and inference flow where necessary.
+
+**Delivery**
+- README and setup instructions.
+- Architecture and implementation documentation.
+- Demonstration workflow and screenshots.
+- Deployment instructions and final presentation support.
+
+**Deliverables**
+```text
+app/
+  ui.py
+  visualization.py
+
+configs/
+docs/
+main.py
+README.md
+```
 
 ---
 
-## 6. Phase Timeline
+## 3. Phased Execution Plan
 
-| Phase | Day | Gate (merged to master) |
-|-------|-----|--------------------------|
-| **P0 Foundation** | 0 | F1–F6 merged; design doc + diagram v1 + Dockerfile + hosting chosen |
-| **P1 Build** | 1–2 | A1–A7, B1–B2, C1–C2 merged; **C5 app live locally (classical-only)** |
-| **P2 Results** | 2–3 | C3 first Colab run; B3–B4 merged; full classical benchmark |
-| **P3 Fusion** | 3–4 | C4 fine-tuned; D1–D2 merged; 4-way comparison |
-| **P4 Ablate + Host** | 5 | D3–D4, **B6 eval file**, **C7 hosted URL live**, D6 ethics |
-| **P5 Ship** | 6 | C6 final app, D5 README, D7 demo rehearsal, tag `v1.0` |
-| Buffer | 7 | bugfix, URL re-verify, backup run |
+The sprint is divided into seven phases. Each phase has a goal, owners, concrete tasks and an exit condition. Do not move to integration based only on code being present; the relevant phase must pass its exit condition.
 
-## 7. Acceptance Criteria (rubric-mapped)
+### Phase 0 — Preparation and Feasibility Checks
+**Timing:** Before the 20-hour sprint
 
-1. **Public URL** live, phone+laptop responsive, <10s, loading/error states (UI/UX 15).
-2. **`eval_P4_T<teamID>.md`** with USN first line + metrics in PDF order (Evaluation 25).
-3. **`docs/architecture.md`** matches code; **`docs/DESIGN.md`** all template sections; README reproduces results; limitations + ethics stated (Documentation 15).
-4. Core features on **unseen** test split; proper train/val split; modular code; **bad input handled** (Implementation 20).
-5. `uv run pytest` green; repo runs via **one command or Dockerfile**; **no secrets committed**.
-6. Every `method × factor` cell filled; hybrid ≥ DL on boundary metrics; DL ≥ all classical on RMSE at 8× (PS4 body).
-7. Demo rehearsal: each member explains their part + metrics + a failure case (Demo/Viva 25).
+**Rakshitha**
+- Locate the official deep-model repository and checkpoint.
+- Check license, dependencies, expected inputs, supported scales and dataset protocol.
+- Verify dataset availability and access.
+- Prepare a minimal GPU inference test.
 
-## 8. Open Items (fill in before Day 0 ends)
+**Tanush**
+- Confirm classical method dependencies and implementation choices.
+- Prepare small RGB/depth test pairs and expected input conventions.
 
-1. **Team ID** (e.g. `T01`) and **full USN list** → `configs/team.yaml` (F6).
-2. **Official design-document template** — use if organizer provides one, else standard sections.
-3. **Hosting platform** — recommended Hugging Face Spaces (free, Gradio-native, CPU-friendly).
-4. **Dataset scope** — NYU primary (confirmed); add Middlebury Stereo for external SR eval? (recommended, tiny download).
+**Rishita**
+- Review the fusion design and agree on the input/output contract.
+- Prepare synthetic/mock branch outputs for early development.
 
-## 9. Task Board Sync
+**Kumar**
+- Create the repository, folder structure and individual branches.
+- Add a minimal application skeleton.
+- Add the initial README and environment setup instructions.
 
-- **Claim:** replace `_unclaimed_` with your handle, commit `P4-<id>: claim`, push.
-- **Done:** the merged PR is the record. If scope changed, edit the row in the same PR.
-- **Blockers:** open a GitHub issue titled `P4-<id>: blocker — <short>`.
+**Phase exit condition**
+- Dataset availability is known.
+- Deep-model feasibility has a clear status: verified, at risk or blocked.
+- Shared interfaces and folder ownership are agreed.
+- Everyone can run the project environment.
+
+### Phase 1 — Environment, Contracts and Baselines
+**Timing:** Hours 0–1
+
+**All members**
+- Verify Python environment and dependencies.
+- Confirm common data types, tensor/array layouts, image dimensions and depth units.
+- Freeze function signatures and error conventions.
+- Agree on supported scale factors for the first end-to-end demo.
+
+**Rakshitha**
+- Run GPU availability and actual model forward-pass smoke tests.
+- Confirm dataset loader assumptions.
+
+**Tanush**
+- Implement or verify nearest, bilinear and bicubic baselines.
+
+**Rishita**
+- Create fusion module skeleton and mock prediction fixtures.
+
+**Kumar**
+- Verify repository branches and launch the UI skeleton.
+
+**Phase exit condition**
+- All members can run their own module.
+- Interface contract is written down.
+- Baseline interpolation produces an output with the expected dimensions.
+
+### Phase 2 — Independent Branch Development
+**Timing:** Hours 1–6
+
+**Rakshitha**
+- Build dataset loading, preprocessing and degradation pipeline.
+- Integrate the selected deep model.
+- Run inference on a small sample.
+- Record output shape, depth units, runtime and GPU memory.
+- If the primary model fails the feasibility gate, investigate the pre-agreed alternative within a strict time limit.
+
+**Tanush**
+- Implement JBU and Guided Filtering.
+- Implement invalid-depth handling and conservative hole filling.
+- Implement boundary-aware refinement.
+- Compare methods on a small validation subset.
+
+**Rishita**
+- Implement confidence estimation and fusion using mock branch predictions.
+- Add shape/unit checks and invalid-value handling.
+- Write unit tests for normalized weights and fusion behavior.
+
+**Kumar**
+- Build upload controls, method selection and output visualization using mock outputs.
+- Keep the UI independent of model internals.
+
+**Phase exit condition**
+- Classical branch returns an HR depth map.
+- Deep branch either returns a verified HR depth map or has a documented blocker and fallback decision.
+- Fusion works with mock outputs.
+- UI can display mock outputs.
+
+### Phase 3 — Branch Freeze and Interface Handoff
+**Timing:** Hours 6–10
+
+**Rakshitha**
+- Deliver the deep wrapper and its preprocessing requirements.
+- Deliver dataset and evaluation interfaces.
+- Document model limitations and supported scales.
+
+**Tanush**
+- Deliver the selected classical pipeline and wrapper.
+- Document parameters and known failure cases.
+
+**Rishita**
+- Replace mock predictions with actual branch outputs as they become available.
+- Validate shape, unit and mask compatibility.
+- Run first hybrid inference.
+
+**Kumar**
+- Connect the branch wrappers to the application through the agreed interfaces.
+- Avoid editing deep/classical/hybrid implementation files.
+
+**Phase exit condition**
+- Both branch interfaces are stable, or a blocker is explicitly recorded.
+- Hybrid accepts real branch outputs where available.
+- Application can run at least one complete inference path.
+
+### Phase 4 — Hybrid Refinement and End-to-End Integration
+**Timing:** Hours 10–14
+
+**Rakshitha**
+- Run the common evaluation pipeline for deep and classical branches.
+- Verify evaluation masks and units.
+- Produce initial standalone benchmark results.
+
+**Tanush**
+- Tune classical parameters using validation data.
+- Fix visible artifacts and runtime bottlenecks.
+
+**Rishita**
+- Calibrate confidence weights on validation data.
+- Add boundary refinement.
+- Add measurement-consistency correction only when the forward degradation operator is known.
+- Run the planned ablations.
+
+**Kumar**
+- Complete end-to-end application integration.
+- Add result export and error handling.
+- Test the full user workflow.
+
+**Phase exit condition**
+- Classical, deep and hybrid paths run end to end, or any unavailable path is clearly documented.
+- Initial metrics are generated on the same evaluation samples.
+- No critical interface mismatch remains.
+
+### Phase 5 — Evaluation, Optimization and Reliability
+**Timing:** Hours 14–17
+
+**Rakshitha**
+- Produce final metrics and benchmark tables.
+- Check repeatability and report inference latency/peak memory.
+- Ensure no test-set tuning has occurred.
+
+**Tanush**
+- Freeze the best classical configuration.
+- Document failure cases and parameter settings.
+
+**Rishita**
+- Compare hybrid against both standalone branches.
+- Remove fusion components that do not improve results or introduce artifacts.
+- Freeze the final fusion configuration.
+
+**Kumar**
+- Test application behavior with valid and invalid inputs.
+- Check export files and clean startup.
+- Address integration bugs.
+
+**Phase exit condition**
+- Final configurations are frozen.
+- Results are reproducible.
+- Any claimed hybrid improvement is supported by the evaluation.
+
+### Phase 6 — Final Freeze and Demonstration
+**Timing:** Hours 17–20
+
+**All members**
+- Stop adding new algorithms and features.
+- Fix only critical bugs.
+- Verify the final demo inputs and outputs.
+- Confirm the repository can be set up from the README.
+
+**Rakshitha**
+- Finalize model, dataset and evaluation documentation.
+
+**Tanush**
+- Finalize classical method documentation and results.
+
+**Rishita**
+- Finalize fusion design, ablations and limitations.
+
+**Kumar**
+- Freeze the integrated application.
+- Finalize README, architecture diagram, screenshots and demonstration sequence.
+
+**Phase exit condition**
+- A clean end-to-end demonstration is ready.
+- Code, configuration and documentation are committed.
+- Results and limitations are accurately reported.
+
+---
+
+## 4. Final System Architecture
+
+```text
+                 INPUT
+      ┌───────────────────────────┐
+      │ HR RGB + LR Depth + Mask  │
+      └─────────────┬─────────────┘
+                    │
+          ┌─────────┴─────────┐
+          │                   │
+          ▼                   ▼
+┌──────────────────┐  ┌──────────────────┐
+│ Classical Branch │  │   Deep Branch    │
+│     Tanush       │  │    Rakshitha     │
+└────────┬─────────┘  └────────┬─────────┘
+         │                     │
+         ▼                     ▼
+   Classical HR           Deep HR
+    Depth D_c              Depth D_d
+         │                     │
+         └──────────┬──────────┘
+                    ▼
+          ┌─────────────────────┐
+          │   Hybrid Fusion     │
+          │      Rishita        │
+          │                     │
+          │ Confidence Fusion   │
+          │ Consistency Check   │
+          │ Boundary Refinement │
+          └──────────┬──────────┘
+                     ▼
+          ┌─────────────────────┐
+          │ Final HR Depth Map  │
+          └──────────┬──────────┘
+                     ▼
+          ┌─────────────────────┐
+          │ UI / Visualization  │
+          │ Kumar               │
+          └─────────────────────┘
+```
+
+## 5. Dataset and Model Strategy
+
+| Dataset | Deep branch | Classical branch | Notes |
+|---|---|---|---|
+| NYU-v2 | Primary evaluation candidate for SGNet, subject to implementation verification | Evaluate all selected classical methods | Dense RGB-D setting |
+| Middlebury | Evaluate if supported by the verified model/checkpoint | Evaluate all selected classical methods | High-resolution depth evaluation |
+| KITTI | Separate compatibility investigation; do not assume SGNet support | Sparse-depth-aware processing if included | Sparse LiDAR depth completion differs from dense depth SR |
+
+**Important model distinction:** SGNet and SGSNet are different models. Do not select SGSNet as if it were SGNet. A sparse-depth completion model may be relevant to KITTI, but it is not automatically a drop-in replacement for a depth super-resolution model.
+
+## 6. Shared Interface Contract
+
+Freeze these interfaces before parallel development:
+
+```python
+def deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale=4):
+    # Return HR depth using the verified deep model.
+    ...
+
+def classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale=4):
+    # Return HR depth using the selected classical pipeline.
+    ...
+
+def hybrid_hr_depth(lr_depth, hr_rgb, valid_mask, scale=4):
+    # Return HR depth by combining the two branch outputs.
+    ...
+```
+
+**Common conventions to document and freeze**
+- RGB channel order and numeric range.
+- Depth array shape and data type.
+- Depth units and invalid-value representation.
+- Validity-mask shape and meaning.
+- Scale-factor definition and output dimensions.
+- Whether each wrapper returns a NumPy array or tensor.
+- Device handling and error behavior.
+
+The deep wrapper may internally use a different input contract. The public wrapper above is an adapter, not a claim about the model's native inputs.
+
+---
+
+## 7. Repository Structure and File Ownership
+
+```text
+P4-Depth-SuperResolution/
+├── deep/                       # Rakshitha
+│   ├── deep_model.py
+│   └── inference.py
+├── data/                       # Rakshitha
+│   ├── dataset.py
+│   ├── preprocessing.py
+│   └── degradation.py
+├── eval/                       # Rakshitha
+│   ├── metrics.py
+│   ├── evaluate.py
+│   └── benchmark.py
+├── classical/                  # Tanush
+│   ├── interpolation.py
+│   ├── jbu.py
+│   ├── guided_filter.py
+│   ├── boundary_refinement.py
+│   ├── hole_filling.py
+│   └── pipeline.py
+├── hybrid/                     # Rishita
+│   ├── confidence.py
+│   ├── fusion.py
+│   ├── consistency.py
+│   ├── boundary_refinement.py
+│   └── pipeline.py
+├── app/                        # Kumar
+│   ├── ui.py
+│   └── visualization.py
+├── configs/                    # Kumar coordinates
+├── docs/                       # Kumar coordinates
+├── tests/                      # Each owner tests their own modules
+├── main.py                     # Kumar coordinates
+├── requirements.txt            # Kumar coordinates changes
+└── README.md                   # Kumar coordinates
+```
+
+## 8. Git Workflow — Conflict Prevention
+
+### 8.1 Branch naming
+
+Create one long-lived feature branch per member:
+
+- `feature/deep-data-rakshitha`
+- `feature/classical-tanush`
+- `feature/hybrid-rishita`
+- `feature/app-kumar`
+
+No one commits directly to `main`.
+
+### 8.2 Folder ownership
+
+- Rakshitha: `deep/`, `data/`, `eval/`
+- Tanush: `classical/`
+- Rishita: `hybrid/`
+- Kumar: `app/`, `configs/`, `docs/`, `main.py`, `README.md`
+
+Do not edit another member's owned files without an explicit handoff.
+
+### 8.3 Shared-file policy
+
+The following files are common conflict points:
+- `requirements.txt`
+- `main.py`
+- `README.md`
+- Shared configuration files
+- Shared interface definitions
+
+Kumar coordinates changes to these files. Members send dependency or integration requests to Kumar rather than editing the same files in parallel.
+
+### 8.4 Interface-first development
+
+- Write the function signatures and data conventions before implementation.
+- Do not change a public function signature without informing all affected members.
+- If a contract change is unavoidable, propose it first and update the contract in one coordinated commit.
+
+### 8.5 Mock-first parallel work
+
+- Rishita develops and tests fusion with deterministic mock branch outputs.
+- Kumar develops and tests the UI with mock outputs.
+- Rakshitha and Tanush work independently on their branches.
+- Replace mocks with real outputs only after the branch owners confirm their wrappers are stable.
+
+### 8.6 Pull-request process
+
+1. Commit only files owned by the member.
+2. Push the member's feature branch.
+3. Open a pull request into `main`.
+4. Include a short summary and test evidence.
+5. Request review from the affected owner(s).
+6. Merge only after tests pass and the interface is confirmed.
+
+Kumar coordinates integration order, but each owner remains responsible for testing their own code.
+
+### 8.7 Safe synchronization
+
+- Pull the latest `main` into the feature branch before starting a new work session and before opening a pull request.
+- Do not rebase or force-push a branch another member is using.
+- Avoid simultaneous edits to shared files.
+- Keep commits small and focused.
+- Do not merge unfinished code simply to satisfy the schedule.
+
+---
+
+## 9. Evaluation Protocol
+
+For a fair comparison:
+
+1. Use the same held-out scenes for all methods.
+2. Use the same scale factor and depth units.
+3. Use the same evaluation mask.
+4. Tune parameters and confidence weights on validation data only.
+5. Keep test data untouched until final evaluation.
+6. Report unsupported datasets/scales as not evaluated rather than implying compatibility.
+
+**Methods to compare**
+- Nearest-neighbor
+- Bilinear
+- Bicubic
+- Best classical pipeline
+- Deep model
+- Fixed-weight fusion
+- Confidence-guided hybrid
+- Final hybrid with applicable refinement stages
+
+**Metrics**
+- RMSE and MAE for depth error.
+- PSNR and SSIM with a fixed, documented depth range.
+- Boundary RMSE around ground-truth depth discontinuities.
+- Edge-preservation metric.
+- Inference latency.
+- Peak GPU memory.
+
+RGB edges must not be used as ground-truth depth boundaries.
+
+---
+
+## 10. Completion Checklist
+
+### Rakshitha
+- [ ] Deep model repository/checkpoint and license verified.
+- [ ] Actual GPU inference tested.
+- [ ] Dataset loaders and preprocessing completed.
+- [ ] Original validity masks preserved.
+- [ ] Common metrics and benchmark scripts completed.
+- [ ] Deep branch results documented.
+
+### Tanush
+- [ ] Interpolation baselines completed.
+- [ ] JBU and Guided Filtering completed.
+- [ ] Hole and invalid-depth handling completed.
+- [ ] Classical pipeline wrapper tested.
+- [ ] Best classical configuration selected on validation data.
+- [ ] Classical results documented.
+
+### Rishita
+- [ ] Fusion works with mock outputs.
+- [ ] Fusion accepts real branch outputs.
+- [ ] Confidence weights are normalized.
+- [ ] Boundary refinement tested.
+- [ ] Consistency correction used only with a known forward operator.
+- [ ] Ablation results documented.
+
+### Kumar
+- [ ] Repository and branches created.
+- [ ] UI works with mock outputs.
+- [ ] All branch interfaces integrated.
+- [ ] Input validation and exports tested.
+- [ ] README and setup instructions completed.
+- [ ] Final demonstration tested from a clean run.
+
+### Final project
+- [ ] Classical, deep and hybrid methods compared fairly.
+- [ ] Same test samples and evaluation protocol used.
+- [ ] Limitations and unsupported configurations documented.
+- [ ] No unsupported claims about KITTI compatibility.
+- [ ] No direct commits to `main`.
+- [ ] Final end-to-end demonstration works.
+
+---
+
+## 11. Non-Negotiable Technical Rules
+
+1. Generate and preserve the original validity mask before interpolation or hole filling.
+2. Keep original depth data separate from branch-specific filled or filtered copies.
+3. Do not assume SGNet's native input interface; verify it from the implementation.
+4. Do not claim SGNet supports KITTI without testing and evidence.
+5. Do not use test ground truth to tune confidence weights or classical parameters.
+6. Do not claim exact measurement consistency when the forward degradation operator is unknown.
+7. Do not add U-Net as a default fallback.
+8. Do not add extra models or optional features until both primary branches work.
+9. Do not let multiple members edit the same files in parallel.
+10. Prioritize a working, evaluated hybrid system over feature count.
+
+**Final execution principle:** Rakshitha and Tanush first produce two independently testable reconstruction branches. Rishita combines their verified outputs. Kumar integrates the stable interfaces into the application. The team advances phase by phase using the exit conditions above.
