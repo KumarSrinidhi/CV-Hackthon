@@ -1,0 +1,11 @@
+
+# Local ML data, weights and generated caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+datasets/
+checkpoints/
+runs/
+*.pth
+*.pt
