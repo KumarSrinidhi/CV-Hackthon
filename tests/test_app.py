@@ -7,6 +7,7 @@ import pytest
 
 from app.visualization import (
     boundaries_overlay,
+    confidence_overlay,
     depth_colormap,
     error_map,
     export_npy,
@@ -44,6 +45,32 @@ def test_error_map_zero_for_identical():
     gt = np.full((4, 4), 3.0, np.float32)
     emap = error_map(gt, gt)
     assert (emap == 0).all()
+
+
+def test_confidence_overlay_heat_is_rgb():
+    # JET heat at confidence 0 is blue in RGB; the blend with a red base must
+    # therefore contain blue. (A BGR heat would show zero blue here.)
+    rgb = np.zeros((4, 4, 3), np.uint8)
+    rgb[..., 0] = 255
+    out = confidence_overlay(rgb, np.zeros((4, 4), np.float32))
+    assert out.shape == (4, 4, 3) and out.dtype == np.uint8
+    assert out[..., 2].max() > 50
+
+
+def test_run_reconstruction_returns_rgb_and_red_boundaries(tmp_path, monkeypatch):
+    monkeypatch.setenv("SGNET_CKPT_DIR", str(tmp_path / "empty_ckpt"))
+    from app.ui import run_reconstruction
+
+    lr = np.tile(np.array([2, 2, 5, 5], np.float32), (4, 1))
+    depth_file = tmp_path / "lr.npy"
+    np.save(depth_file, lr)
+    rgb = np.zeros((16, 16, 3), np.uint8)
+    rgb[:, 7:] = 200
+    colormap, boundaries, conf_c, conf_d = run_reconstruction(rgb, str(depth_file), None, 4, "hybrid")
+    for img in (colormap, boundaries, conf_c, conf_d):
+        assert img.shape == (16, 16, 3) and img.dtype == np.uint8
+    assert (boundaries == np.uint8([255, 0, 0])).all(axis=2).any()  # red in RGB
+    assert not (boundaries == np.uint8([0, 0, 255])).all(axis=2).any()  # no BGR-red artefact
 
 
 def test_export_png_and_npy(tmp_path):

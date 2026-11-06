@@ -59,7 +59,11 @@ def depth_boundaries_mask(depth, valid_mask=None, rel_thresh=0.08):
 
 
 def boundaries_overlay(rgb, depth, valid_mask=None, color=(0, 0, 255), thickness=1):
-    """Overlay depth-discontinuity boundaries (BGR colour) on an RGB image."""
+    """Overlay depth-discontinuity boundaries on ``rgb`` (channel order preserved).
+
+    ``color`` is applied to the returned array as given: pass (255, 0, 0) for red
+    when ``rgb`` is RGB, (0, 0, 255) when it is BGR (e.g. destined for imwrite).
+    """
     base = np.asarray(rgb)
     if base.dtype == np.float32 and base.max() <= 1.0:
         base = (np.clip(base, 0.0, 1.0) * 255.0).astype(np.uint8)
@@ -85,7 +89,12 @@ def error_map(pred, gt, valid_mask=None, max_error=None, colormap=cv2.COLORMAP_H
 
 
 def confidence_overlay(rgb, confidence, colormap=cv2.COLORMAP_JET):
-    """Overlay a [0, 1] confidence map as a colormap (BGR)."""
+    """Overlay a [0, 1] confidence map on an RGB base image; returns RGB.
+
+    ``rgb`` is treated as an RGB (H, W, 3) array (the Gradio UI convention), and
+    the colormap heat is converted from OpenCV's BGR to RGB before blending so
+    the displayed colours are correct.
+    """
     base = np.asarray(rgb)
     if base.dtype == np.float32 and base.max() <= 1.0:
         base = (np.clip(base, 0.0, 1.0) * 255.0).astype(np.uint8)
@@ -93,6 +102,7 @@ def confidence_overlay(rgb, confidence, colormap=cv2.COLORMAP_JET):
         base = np.clip(base, 0, 255).astype(np.uint8)
     c = np.clip(np.asarray(confidence, np.float32), 0.0, 1.0)
     heat = cv2.applyColorMap((c * 255.0).astype(np.uint8), colormap)
+    heat = cv2.cvtColor(heat, cv2.COLOR_BGR2RGB)
     return cv2.addWeighted(base[..., :3], 0.4, heat, 0.6, 0.0)
 
 

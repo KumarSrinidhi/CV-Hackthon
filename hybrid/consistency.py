@@ -22,7 +22,6 @@ def enforce_consistency(fused_hr, lr_depth, valid_mask=None, scale=4, operator=N
     Df = np.asarray(fused_hr, dtype=np.float32)
     lr = np.asarray(lr_depth, dtype=np.float32)
     H, W = Df.shape[:2]
-    h, w = lr.shape
 
     if operator is None:
         from data.degradation import forward_operator

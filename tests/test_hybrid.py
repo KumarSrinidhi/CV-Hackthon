@@ -9,6 +9,15 @@ from hybrid.consistency import enforce_consistency
 from hybrid.fusion import fuse, fuse_fixed
 
 
+@pytest.fixture()
+def no_deep_checkpoint(tmp_path, monkeypatch):
+    """Isolate the deep branch: no checkpoints anywhere, so hybrid must degrade."""
+    monkeypatch.setenv("SGNET_CKPT_DIR", str(tmp_path / "empty_ckpt"))
+    monkeypatch.delenv("SGNET_CKPT_X4", raising=False)
+    monkeypatch.delenv("SGNET_CKPT_X8", raising=False)
+    monkeypatch.delenv("SGNET_CKPT_X16", raising=False)
+
+
 def _synthetic(scale=4):
     lr = np.tile(np.array([2, 2, 5, 5], np.float32), (4, 1))
     rgb = np.zeros((16, 16, 3), np.float32)
@@ -76,7 +85,7 @@ def test_consistency_is_deterministic():
     np.testing.assert_array_equal(a, b)
 
 
-def test_hybrid_raises_when_deep_unavailable():
+def test_hybrid_raises_when_deep_unavailable(no_deep_checkpoint):
     lr, rgb = _synthetic(4)
     with pytest.raises(NotImplementedError, match="deep branch not available"):
         hybrid_hr_depth(lr, rgb, None, 4)
