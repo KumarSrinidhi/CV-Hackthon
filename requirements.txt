@@ -1,3 +1,5 @@
-numpy==2.2.6
-opencv-python-headless==5.0.0.93
-torch==2.14.1
+# Team Owner: Kumar (Coordinates dependency changes)
+# Workstream: Project Coordination
+# File: requirements.txt
+# Description: Project dependencies agreed upon across deep, classical, hybrid, and app modules.
+
