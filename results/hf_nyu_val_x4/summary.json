@@ -1,0 +1,35 @@
+{
+  "summary": {
+    "bicubic": {
+      "n_ok": 479,
+      "n_failed": 0,
+      "rmse": 0.03768024329183402,
+      "mae": 0.0120916580472141,
+      "psnr": 50.1830961645644,
+      "ssim": 0.9943026613188293,
+      "boundary_rmse": 0.1743348707421453,
+      "edge_f1": 0.2779000974374826,
+      "latency_ms": 6.48948663872028
+    },
+    "deep": {
+      "n_ok": 479,
+      "n_failed": 0,
+      "rmse": 0.009570094792792963,
+      "mae": 0.003099042979781637,
+      "psnr": 61.899598779845455,
+      "ssim": 0.9994609406105116,
+      "boundary_rmse": 0.040262485116388455,
+      "edge_f1": 0.966712141554329,
+      "latency_ms": 1894.9968555328446
+    }
+  },
+  "meta": {
+    "dataset": "huggingface:sayakpaul/nyu_depth_v2 (FastDepth val, 654 imgs)",
+    "scale": 4,
+    "data_range": 10.0,
+    "border": 6,
+    "degradation": "PIL bicubic x4 on GT (clean, operator exact)",
+    "device": "cuda",
+    "n_samples": 479
+  }
+}

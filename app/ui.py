@@ -10,8 +10,6 @@ not require it. Launch with:
 
 from __future__ import annotations
 
-import os
-
 import cv2
 import numpy as np
 
@@ -19,9 +17,8 @@ from app.visualization import (
     boundaries_overlay,
     confidence_overlay,
     depth_colormap,
-    error_map,
 )
-from main import load_depth, load_image, reconstruct
+from main import load_depth, reconstruct
 
 _METHODS = ["hybrid", "classical", "deep", "jbu", "guided", "bicubic", "bilinear", "nearest"]
 
@@ -49,8 +46,10 @@ def run_reconstruction(rgb, depth_file, mask_file, scale, method):
     depth = result["depth"]
     inter = result.get("intermediates", {})
 
-    colormap = depth_colormap(depth)
-    boundaries = boundaries_overlay(rgb, depth)
+    # The visualization helpers below follow OpenCV's BGR convention; Gradio
+    # displays RGB, so convert before returning.
+    colormap = cv2.cvtColor(depth_colormap(depth), cv2.COLOR_BGR2RGB)
+    boundaries = boundaries_overlay(rgb, depth, color=(255, 0, 0))
     wc = inter.get("confidence_classical")
     wd = inter.get("confidence_deep")
     conf_c = confidence_overlay(rgb, wc) if wc is not None else colormap
@@ -92,10 +91,8 @@ def build_app():
 
 
 def launch():
-    import gradio as gr
-
     demo = build_app()
-    demo.launch(server_name="0.0.0.0")
+    demo.launch()
 
 
 if __name__ == "__main__":

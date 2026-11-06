@@ -278,7 +278,11 @@ def test_cuda_forward_and_profile(synth, clean_cache):
 
 
 # --------------------------------------------------------------- evaluation
-def test_evaluate_methods_same_samples_and_unavailable_reporting(nyu_root):
+def test_evaluate_methods_same_samples_and_unavailable_reporting(nyu_root, tmp_path, monkeypatch, clean_cache):
+    monkeypatch.setenv("SGNET_CKPT_DIR", str(tmp_path / "empty_ckpt"))
+    monkeypatch.delenv("SGNET_CKPT_X4", raising=False)
+    monkeypatch.delenv("SGNET_CKPT_X8", raising=False)
+    monkeypatch.delenv("SGNET_CKPT_X16", raising=False)
     root, _ = nyu_root
     ds = NYUv2Dataset(root, "val", 4)
     res = evaluate_methods(ds, ["nearest", "bilinear", "bicubic", "hybrid"], max_samples=3, verbose=False)
