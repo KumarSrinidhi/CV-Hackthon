@@ -1,0 +1,10 @@
+# Rakshitha's modules (deep/, data/, eval/). Send these lines to Kumar for the shared requirements.txt.
+# PyTorch: do NOT `pip install torch` blindly on the RTX 5050 (Blackwell, sm_120). Install a CUDA 12.8+ build first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+numpy>=1.24
+scipy>=1.10
+opencv-python>=4.8
+Pillow>=10.0
+scikit-image>=0.21
+matplotlib>=3.7
+pytest>=7.4
