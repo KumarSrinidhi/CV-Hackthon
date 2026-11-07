@@ -45,6 +45,7 @@ BRANCHES = {
     "deep": ("deep.inference", "deep_hr_depth"),
     "hybrid": ("hybrid.pipeline", "hybrid_hr_depth"),
 }
+HYBRID_METHODS = {"hybrid", "hybrid_fixed02", "hybrid_adaptive", "hybrid_selected_clean"}
 _CV2 = {"nearest": cv2.INTER_NEAREST, "bilinear": cv2.INTER_LINEAR, "bicubic": cv2.INTER_CUBIC}
 
 
@@ -124,9 +125,15 @@ def evaluate_methods(
             callables[name] = methods[name]
             continue
         try:
+            if name in HYBRID_METHODS:
+                from deep.deep_model import resolve_checkpoint
+
+                resolve_checkpoint(dataset.scale)
             callables[name] = load_method(name)
         except MethodUnavailable as e:
             not_eval[name] = str(e)
+        except Exception as e:
+            not_eval[name] = f"{type(e).__name__}: {e}"
 
     rows: List[dict] = []
     failures: Dict[str, List[str]] = {k: [] for k in callables}
