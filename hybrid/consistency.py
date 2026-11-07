@@ -13,12 +13,13 @@ def enforce_measurement_consistency(
     lr_depth: np.ndarray,
     scale: int = 4,
     valid_mask: Optional[np.ndarray] = None,
-    gain: float = 0.5,
+    gain: float = 0.4,
+    operator_mode: str = "bicubic",
 ) -> np.ndarray:
     """
     Measurement consistency enforcement:
-    Projects the high-resolution reconstructed depth back to the low-resolution sensor space
-    using the forward sampling operator S, computes the measurement residual:
+    Projects the high-resolution reconstructed depth back to low-resolution sensor space
+    using the matching forward sampling operator S, computes the measurement residual:
         r_LR = D_LR - S(D_f)
     and projects the residual back to correct D_f:
         D_cons = D_f + gain * S^dagger(r_LR)
@@ -29,6 +30,7 @@ def enforce_measurement_consistency(
         scale: Downsampling / scale factor.
         valid_mask: Optional boolean validity mask on LR depth.
         gain: Consistency correction damping factor (in (0, 1]).
+        operator_mode: Forward operator interpolation mode ('bicubic', 'area', 'nearest').
 
     Returns:
         Measurement-consistent HR depth map (float32).
@@ -38,8 +40,15 @@ def enforce_measurement_consistency(
     h_hr, w_hr = fused_depth.shape[:2]
     h_lr, w_lr = lr_depth.shape[:2]
 
-    # Forward degradation operator S: downsampling HR depth to LR grid
-    s_depth = cv2.resize(fused_depth, (w_lr, h_lr), interpolation=cv2.INTER_AREA)
+    # Matching forward degradation operator S
+    if operator_mode == "bicubic":
+        interp = cv2.INTER_CUBIC
+    elif operator_mode == "nearest":
+        interp = cv2.INTER_NEAREST
+    else:
+        interp = cv2.INTER_AREA
+
+    s_depth = cv2.resize(fused_depth, (w_lr, h_lr), interpolation=interp)
 
     # Compute sensor measurement residual
     r_lr = lr_depth - s_depth
@@ -51,7 +60,7 @@ def enforce_measurement_consistency(
         invalid = ~np.isfinite(lr_depth) | (lr_depth <= 0)
         r_lr = np.where(~invalid, r_lr, 0.0)
 
-    # Smooth / upsample residual back to high resolution
+    # Project residual back to high resolution
     r_hr = cv2.resize(r_lr, (w_hr, h_hr), interpolation=cv2.INTER_CUBIC)
 
     # Apply damped correction

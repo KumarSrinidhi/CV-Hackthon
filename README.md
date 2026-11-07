@@ -1,3 +1,15 @@
+---
+title: Edge-Preserving Depth Map Super-Resolution (P4)
+emoji: 🏔️
+colorFrom: indigo
+colorTo: cyan
+sdk: gradio
+sdk_version: 6.31.0
+app_file: app.py
+pinned: false
+license: mit
+---
+
 # Problem Statement 4 (ProbID - P4): Edge-Preserving Depth Map Super-Resolution and Refinement
 
 A hybrid deep-learning and classical computer vision architecture for edge-preserving depth map upsampling (2×, 4×, 8×) with RGB structural guidance, backward measurement consistency enforcement, and adaptive boundary refinement.
