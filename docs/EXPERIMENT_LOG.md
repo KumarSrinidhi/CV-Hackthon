@@ -197,3 +197,39 @@ Peak VRAM 3.76 GB; ~2.7 s/step (full-model backward).
 The confirmed missing-depth/noise weaknesses are substantially fixed; clean cost is +3.4% RMSE (0.0087→0.0090) and −0.005 edge F1. The original's strong-noise performance was *worse than bicubic*; E4b restores a large margin.
 
 **Artifacts:** `runs/e4b_all_curriculum/` (best.pth = epoch 3; `runs/` is gitignored — checkpoint SHA256 recorded in `docs/DEEP_MODEL_IMPROVEMENTS.md`), `results/e4b_val150_{clean,holes,noise,noise_strong}/`, `results/original_val150_{clean,holes,noise,noise_strong}/`, `results/verify_holes_val150/`.
+
+E4b best.pth SHA256: `8413deabbf4e81b9…`
+
+## P3-E5 — Gradient supervision added to the kept curriculum (isolates the loss factor)
+
+**Experiment proposal:** identical to P3-E4b (same data curriculum, scope all, lr 1e-6, cosine, seed, 3 epochs) plus **λ_g=0.1 Sobel-gradient L1** applied to both the main output and the previously unsupervised auxiliary `out_re` head.
+- **Observed failure targeted:** boundary error dominates clean RMSE (P1-07: edge regions 12× smooth; correlation 0.945 with edge density); `out_re` unsupervised (verified in code).
+- **Hypothesis:** gradient supervision sharpens boundary reconstruction and recovers some of E4b's clean cost.
+- **Success criteria (vs E4b on the same 30-image val subset):** clean val RMSE < 0.01289 AND holes val RMSE ≤ 0.04333 × 1.02 (no material robustness loss).
+- **Rejection:** clean not improved or holes regression > 2%.
+- **Config:** `python -m deep.finetune_v2 --root nyu_data/nyu_data --epochs 3 --steps-per-epoch 200 --train-regimes clean,holes,noise,block,combined --val-regimes clean,holes --scope all --lr 1e-6 --schedule cosine --clip 1.0 --depth-loss l1 --lam-g 0.1 --grad-target both --seed 42 --out runs/e5_grad_curriculum`
+
+**Results (30-image val subset, vs E4b):**
+
+| epoch | clean (E5 / E4b) | holes (E5 / E4b) |
+|---|---|---|
+| 3 (best) | 0.012878 / 0.012892 | 0.043268 / 0.043327 |
+
+**Decision: REJECT (no meaningful change).** Differences are −0.1% on both regimes — within run-to-run noise on 30 images; gradient supervision at λ_g=0.1 with grad-target both neither helps nor hurts. λ_g=0 kept; no complexity without measurable benefit. (Rejection documented per plan §18.7.)
+
+## P3-E4b-HF — E4b checkpoint on the clean HF 100-sample benchmark
+
+- **Question:** does the kept robust checkpoint preserve clean-benchmark quality (target RMSE < 0.0101, F1 ≥ 0.960)?
+- **Method:** `eval_all3_hf.py` with `SGNET_CKPT_X4=runs/e4b_all_curriculum/best.pth`, all six methods, n=100 → `results/e4b_hf_clean100/`.
+- **Results:** deep RMSE **0.0104** (original 0.0101), edge F1 **0.952** (original 0.960), boundary RMSE 0.0449 (0.0434), latency 1881 ms; hybrid 0.0301/0.801 (unchanged behaviour — still loses to deep on clean).
+- **Decision:** the robustness gain costs −0.0003 RMSE / −0.008 F1 on clean; acceptance target not yet met. Next single factor: clean-weighted training distribution (E6).
+
+## P3-E6 — Clean-weighted curriculum (isolates the training-distribution factor)
+
+**Experiment proposal:** identical to P3-E4b (scope all, lr 1e-6, cosine, 3 epochs, seed 42) except training-regime sampling weights **clean 0.40, holes 0.15, noise 0.15, block 0.15, combined 0.15** (E4b used uniform 0.2 each).
+- **Hypothesis:** E4b's clean drift comes from 80% degraded samples; heavier clean exposure retains robustness while recovering clean accuracy.
+- **Success criteria (30-image val subset vs E4b):** clean < 0.01289 AND holes ≤ 0.045; then confirm on val150 + HF benchmark.
+- **Rejection:** clean ≥ E4b's or holes > 0.045.
+- **Config:** `python -m deep.finetune_v2 --root nyu_data/nyu_data --epochs 3 --steps-per-epoch 200 --train-regimes clean,holes,noise,block,combined --regime-weights 0.4,0.15,0.15,0.15,0.15 --val-regimes clean,holes --scope all --lr 1e-6 --schedule cosine --clip 1.0 --depth-loss l1 --seed 42 --out runs/e6_cleanweighted`
+
+**Results:** (pending)

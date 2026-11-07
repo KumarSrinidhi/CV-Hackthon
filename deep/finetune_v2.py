@@ -198,6 +198,8 @@ def main(argv=None):
                    help="apply the gradient loss to the main output, the auxiliary out_re, or both")
     p.add_argument("--train-regimes", default="clean",
                    help="comma list from: " + ", ".join(REGIMES))
+    p.add_argument("--regime-weights", default=None,
+                   help="comma floats aligned with --train-regimes (default: uniform)")
     p.add_argument("--val-regimes", default="clean",
                    help="validation regimes; checkpoint selection uses the mean across them")
     a = p.parse_args(argv)
@@ -208,6 +210,13 @@ def main(argv=None):
     for name in a.train_regimes.split(",") + a.val_regimes.split(","):
         if name not in REGIMES:
             p.error(f"Unknown regime '{name}'. Choose from: {', '.join(REGIMES)}")
+    regime_p = None
+    if a.regime_weights:
+        w = [float(x) for x in a.regime_weights.split(",")]
+        if len(w) != len(a.train_regimes.split(",")) or any(x < 0 for x in w) or sum(w) <= 0:
+            p.error("--regime-weights must be non-negative, sum > 0, and match --train-regimes length.")
+        total = sum(w)
+        regime_p = [x / total for x in w]
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     if any(out.iterdir()):
@@ -282,7 +291,8 @@ def main(argv=None):
         totals = {}
         epoch_start = time.perf_counter()
         for step in range(a.steps_per_epoch):
-            regime = train_names[int(rng.integers(len(train_names)))]
+            regime = rng.choice(len(train_names), p=regime_p) if regime_p else int(rng.integers(len(train_names)))
+            regime = train_names[regime]
             samples = [draw_patch(train_sets[regime], rng, a.patch, a.scale) for _ in range(a.batch_size)]
             rgb, lr, target, mask = [torch.stack([s[k] for s in samples]).to(device) for k in range(4)]
             optimizer.zero_grad(set_to_none=True)
