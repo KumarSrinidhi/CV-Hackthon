@@ -232,4 +232,43 @@ E4b best.pth SHA256: `8413deabbf4e81b9…`
 - **Rejection:** clean ≥ E4b's or holes > 0.045.
 - **Config:** `python -m deep.finetune_v2 --root nyu_data/nyu_data --epochs 3 --steps-per-epoch 200 --train-regimes clean,holes,noise,block,combined --regime-weights 0.4,0.15,0.15,0.15,0.15 --val-regimes clean,holes --scope all --lr 1e-6 --schedule cosine --clip 1.0 --depth-loss l1 --seed 42 --out runs/e6_cleanweighted`
 
+**Results (30-image val subset, vs E4b):**
+
+| epoch 3 (best) | E6 | E4b |
+|---|---|---|
+| clean | 0.012832 | 0.012892 |
+| holes | 0.043520 | 0.043327 |
+
+**Decision: REJECT (no meaningful change).** Clean −0.5%, holes +0.4% — both within noise. The clean drift is inherent to fine-tuning on the NYU train bundle, not the regime mix. Uniform sampling kept.
+
+## P3-E7 — Training duration (6 epochs; isolates the duration factor)
+
+**Experiment proposal:** identical to P3-E4b except **epochs 6** (fresh cosine over 6 epochs).
+- **Hypothesis:** E4b's best was its final epoch (selection curve not saturated); longer training improves both clean and holes.
+- **Success:** clean < 0.01289 AND holes < 0.04333 on the 30-image val subset.
+- **Rejection:** either metric not improved.
+- **Config:** `python -m deep.finetune_v2 --root nyu_data/nyu_data --epochs 6 --steps-per-epoch 200 --train-regimes clean,holes,noise,block,combined --val-regimes clean,holes --scope all --lr 1e-6 --schedule cosine --clip 1.0 --depth-loss l1 --seed 42 --out runs/e7_6epoch`
+
+**Results (30-image val subset):**
+
+| epoch | clean | holes | mean |
+|---|---|---|---|
+| pretrained | 0.01230 | 0.05601 | 0.03415 |
+| 4 (best) | 0.01301 | 0.04205 | 0.02753 |
+| 6 (last) | 0.01300 | 0.04206 | 0.02753 |
+
+**Full val150 confirmation (E7-best):** holes **0.0333** (E4b: 0.0344), noise σ=0.02 **0.0219** (E4b: 0.0227).
+
+**Decision: REJECT as a single-checkpoint replacement** (pre-registered criterion requires BOTH metrics improved; clean regressed +0.9%) but **KEEP as the robust-slot checkpoint** for E8: it is the best holes/noise performer measured, and clean quality under E8 is served by the original checkpoint. E7 best.pth SHA256: (recorded in docs/DEEP_MODEL_IMPROVEMENTS.md).
+
+## P3-E8 — Regime-aware checkpoint selection (deployable, LR-only detection)
+
+**Experiment proposal:**
+- **Observed failures:** (i) E4b/E7 robustness gains are statistically significant but cost a significant clean regression (Phase 4 stats: HF clean RMSE +0.00026, CI [+0.00020,+0.00032], 99/100 scenes worse); (ii) B2/B3: the regime is inferable from the LR input (holes = invalid LR pixels; noise = local high-frequency energy).
+- **Intervention:** `deep/adaptive.py::deep_hr_depth_adaptive` — detect regime from LR only: holes → robust checkpoint (E7 best); median |Laplacian| of valid LR > threshold → noise → robust checkpoint; else → original checkpoint. Threshold calibrated on val only.
+- **Calibration (50 val images):** clean Laplacian score ∈ [0.0077, 0.0245]; noise σ=0.02 ∈ [0.0640, 0.0818]; σ=0.05 ∈ [0.153, 0.179]. Classes perfectly separated; threshold = 4e-2 (geometric midpoint of the clean/noise gap).
+- **Success criteria:** HF clean benchmark equals original deep within noise (RMSE ≤ 0.0101 + 2σ, F1 ≥ 0.958); val150 holes/noise match or beat E7 numbers.
+- **Rejection:** any regime misrouted in validation, or clean benchmark not preserved.
+- **Config:** `python scripts/eval_adaptive.py --tars datasets/val-000000.tar --max-samples 100 --out results/e8_hf_clean100` and `--nyu-val --out results/e8_val150`.
+
 **Results:** (pending)
