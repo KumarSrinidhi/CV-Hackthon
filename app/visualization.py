@@ -75,6 +75,13 @@ def create_side_by_side_comparison(
         axes[0, i].axis("off")
 
     plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path, bbox_inches="tight", dpi=150)
+        plt.close(fig)
+
+    return fig
+
+
 def plot_scanline_profile(
     bicubic: np.ndarray,
     classical: np.ndarray,

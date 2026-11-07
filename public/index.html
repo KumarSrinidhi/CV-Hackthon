@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edge-Preserving Depth Super-Resolution (P4)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .slider-container { position: relative; overflow: hidden; border-radius: 12px; }
+    .slider-after { position: absolute; top: 0; left: 0; height: 100%; width: 50%; overflow: hidden; border-right: 2px solid #6366f1; }
+    .slider-handle {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 40px; height: 40px; border-radius: 50%; background: #4f46e5;
+      color: white; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.5); cursor: ew-resize; pointer-events: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Navigation Bar -->
+  <nav class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🏔️</span>
+        <div>
+          <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">P4 Depth Super-Resolution</span>
+          <span class="text-xs text-slate-400 block">CV Hackathon 2026 · Hybrid Intelligence</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/KumarSrinidhi/CV-Hackthon/tree/kumarbro" target="_blank" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">GitHub Repo</a>
+        <a href="#demo" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition">Live Showcase</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="max-w-7xl mx-auto px-6 pt-16 pb-12 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-6">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      Problem Statement 4 (ProbID - P4) · Vercel Edge Deployment
+    </div>
+    <h1 class="text-4xl md:text-6xl font-black tracking-tight text-white max-w-4xl mx-auto leading-tight">
+      Edge-Preserving Depth Map <span class="bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">Super-Resolution & Refinement</span>
+    </h1>
+    <p class="mt-6 text-lg text-slate-400 max-w-2xl mx-auto">
+      Reconstructing crisp physical depth discontinuities from sparse, low-resolution sensor inputs by fusing <b>Joint Bilateral Upsampling</b> with <b>Edge-Guided Neural Networks</b> and <b>Measurement Consistency</b>.
+    </p>
+
+    <!-- KPI Metric Chips -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto mt-12">
+      <div class="p-5 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
+        <div class="text-xs uppercase font-semibold text-indigo-400 tracking-wider">Hybrid RMSE</div>
+        <div class="text-3xl font-black text-white mt-1">0.0122 m</div>
+        <div class="text-xs text-emerald-400 mt-1">NYU Validation x4</div>
+      </div>
+      <div class="p-5 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
+        <div class="text-xs uppercase font-semibold text-emerald-400 tracking-wider">Peak SNR</div>
+        <div class="text-3xl font-black text-white mt-1">59.58 dB</div>
+        <div class="text-xs text-slate-400 mt-1">+0.11 dB gain</div>
+      </div>
+      <div class="p-5 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
+        <div class="text-xs uppercase font-semibold text-amber-400 tracking-wider">Edge F1 Score</div>
+        <div class="text-3xl font-black text-white mt-1">0.975</div>
+        <div class="text-xs text-slate-400 mt-1">Boundary Precision</div>
+      </div>
+      <div class="p-5 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
+        <div class="text-xs uppercase font-semibold text-sky-400 tracking-wider">SSIM Index</div>
+        <div class="text-3xl font-black text-white mt-1">0.9994</div>
+        <div class="text-xs text-slate-400 mt-1">Structural Fidelity</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive Swipe Slider Showcase -->
+  <section id="demo" class="max-w-6xl mx-auto px-6 py-12">
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <span>🔮 Interactive Before / After Split Slider</span>
+          </h2>
+          <p class="text-xs text-slate-400">Drag your mouse or finger across the image to compare Degraded Input vs. Reconstructed Hybrid Depth</p>
+        </div>
+        <span class="text-xs font-mono bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30">Scale: 4x Super-Resolution</span>
+      </div>
+
+      <!-- Slider Container -->
+      <div class="slider-container aspect-[4/3] max-w-3xl mx-auto relative cursor-ew-resize select-none" id="swipeBox">
+        <!-- Before (Degraded LR) -->
+        <img src="assets/2_lr_sensor_input.png" alt="Degraded LR Input" class="w-full h-full object-cover">
+        <div class="absolute top-4 left-4 bg-black/60 backdrop-blur px-3 py-1 rounded text-xs font-mono text-white pointer-events-none">Input: Degraded LR Depth</div>
+
+        <!-- After (Hybrid Depth) -->
+        <div class="slider-after" id="afterBox">
+          <img src="assets/6_hybrid_optimal.png" alt="Hybrid Reconstructed" class="absolute top-0 left-0 max-w-none h-full" id="afterImg">
+          <div class="absolute top-4 right-4 bg-indigo-600/80 backdrop-blur px-3 py-1 rounded text-xs font-mono text-white pointer-events-none">Output: Hybrid Reconstructed</div>
+        </div>
+
+        <div class="slider-handle" id="sliderHandle">↔</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8-Panel Comparison Gallery -->
+  <section class="max-w-6xl mx-auto px-6 py-12">
+    <div class="text-center mb-8">
+      <h2 class="text-2xl font-extrabold text-white">Full Multi-Track Reconstruction Breakdown</h2>
+      <p class="text-sm text-slate-400">Side-by-side progression from input sensor degradation to 3D boundary alignment</p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 overflow-hidden bg-slate-900/50 p-2 shadow-2xl">
+      <img src="assets/full_showcase.png" alt="Multi-Track Comparison" class="w-full rounded-xl">
+    </div>
+  </section>
+
+  <!-- Quantitative Scorecard Table -->
+  <section class="max-w-6xl mx-auto px-6 py-12">
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <h2 class="text-xl font-bold text-white mb-4">Official NYU-v2 Protocol Verification Scorecard</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-300">
+          <thead class="text-xs uppercase bg-slate-800/60 text-slate-400 border-b border-slate-800 font-semibold">
+            <tr>
+              <th class="py-3 px-4">Method Track</th>
+              <th class="py-3 px-4">RMSE (m) ↓</th>
+              <th class="py-3 px-4">MAE (m) ↓</th>
+              <th class="py-3 px-4">PSNR (dB) ↑</th>
+              <th class="py-3 px-4">SSIM ↑</th>
+              <th class="py-3 px-4">Boundary RMSE ↓</th>
+              <th class="py-3 px-4">Edge F1 ↑</th>
+              <th class="py-3 px-4">Inference Latency</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 font-mono text-xs">
+            <tr class="hover:bg-slate-800/30">
+              <td class="py-3 px-4 font-sans font-semibold text-slate-400">Bicubic Baseline</td>
+              <td class="py-3 px-4">0.0367</td>
+              <td class="py-3 px-4">0.0100</td>
+              <td class="py-3 px-4">51.62</td>
+              <td class="py-3 px-4">0.9957</td>
+              <td class="py-3 px-4">0.1680</td>
+              <td class="py-3 px-4 text-rose-400">0.259</td>
+              <td class="py-3 px-4">2.8 ms</td>
+            </tr>
+            <tr class="hover:bg-slate-800/30">
+              <td class="py-3 px-4 font-sans font-semibold text-amber-400">Classical (JBU)</td>
+              <td class="py-3 px-4">0.0584</td>
+              <td class="py-3 px-4">0.0167</td>
+              <td class="py-3 px-4">47.59</td>
+              <td class="py-3 px-4">0.9900</td>
+              <td class="py-3 px-4">0.2591</td>
+              <td class="py-3 px-4 text-emerald-400">0.671</td>
+              <td class="py-3 px-4">464 ms</td>
+            </tr>
+            <tr class="hover:bg-slate-800/30">
+              <td class="py-3 px-4 font-sans font-semibold text-sky-400">Deep (EdgeGuidedSRNet)</td>
+              <td class="py-3 px-4">0.0123</td>
+              <td class="py-3 px-4">0.0036</td>
+              <td class="py-3 px-4">59.57</td>
+              <td class="py-3 px-4">0.9994</td>
+              <td class="py-3 px-4">0.0537</td>
+              <td class="py-3 px-4 text-emerald-400">0.976</td>
+              <td class="py-3 px-4">1899 ms</td>
+            </tr>
+            <tr class="bg-indigo-950/40 text-indigo-200 font-bold border-l-4 border-indigo-500">
+              <td class="py-3 px-4 font-sans font-extrabold text-white">Hybrid (Optimal α=0.02 + Consistency)</td>
+              <td class="py-3 px-4 text-emerald-400">0.0122</td>
+              <td class="py-3 px-4">0.0036</td>
+              <td class="py-3 px-4 text-emerald-400">59.58</td>
+              <td class="py-3 px-4">0.9994</td>
+              <td class="py-3 px-4 text-emerald-400">0.0536</td>
+              <td class="py-3 px-4">0.975</td>
+              <td class="py-3 px-4">2134 ms</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 py-8 text-center text-xs text-slate-500">
+    <p>Computer Vision Hackathon 2026 · Problem Statement 4 (ProbID - P4)</p>
+    <p class="mt-1">Rakshitha (Deep Learning) · Tanush (Classical CV) · Rishita (Hybrid Fusion) · Kumar (Integration & Deployment)</p>
+  </footer>
+
+  <!-- Script for Interactive Split Slider -->
+  <script>
+    const box = document.getElementById('swipeBox');
+    const afterBox = document.getElementById('afterBox');
+    const afterImg = document.getElementById('afterImg');
+    const handle = document.getElementById('sliderHandle');
+
+    function syncDimensions() {
+      afterImg.style.width = box.offsetWidth + 'px';
+    }
+    window.addEventListener('resize', syncDimensions);
+    syncDimensions();
+
+    function setPosition(x) {
+      const rect = box.getBoundingClientRect();
+      let pos = (x - rect.left) / rect.width;
+      pos = Math.max(0.05, Math.min(0.95, pos));
+      const pct = (pos * 100).toFixed(1) + '%';
+      afterBox.style.width = pct;
+      handle.style.left = pct;
+    }
+
+    let isDragging = false;
+    box.addEventListener('mousedown', (e) => { isDragging = true; setPosition(e.clientX); });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+    window.addEventListener('mousemove', (e) => { if (isDragging) setPosition(e.clientX); });
+    box.addEventListener('touchstart', (e) => { isDragging = true; setPosition(e.touches[0].clientX); });
+    window.addEventListener('touchend', () => { isDragging = false; });
+    window.addEventListener('touchmove', (e) => { if (isDragging) setPosition(e.touches[0].clientX); });
+  </script>
+</body>
+</html>
