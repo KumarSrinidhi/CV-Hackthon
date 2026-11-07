@@ -14,6 +14,8 @@
       color: white; display: flex; align-items: center; justify-content: center;
       box-shadow: 0 4px 14px rgba(79, 70, 229, 0.5); cursor: ew-resize; pointer-events: none;
     }
+    .drop-zone { border: 2px dashed #334155; transition: all 0.2s ease; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: #6366f1; background: rgba(99, 102, 241, 0.05); }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
@@ -29,85 +31,243 @@
         </div>
       </div>
       <div class="flex items-center gap-3">
-        <a href="https://github.com/KumarSrinidhi/CV-Hackthon/tree/kumarbro" target="_blank" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">GitHub Repo</a>
-        <a href="#demo" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition">Live Showcase</a>
+        <a href="https://github.com/RJsr-08/wfeqwfdwe" target="_blank" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">GitHub Repo</a>
+        <a href="#interactive-studio" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition">Interactive Studio</a>
       </div>
     </div>
   </nav>
 
   <!-- Hero Section -->
-  <header class="max-w-7xl mx-auto px-6 pt-16 pb-12 text-center">
+  <header class="max-w-7xl mx-auto px-6 pt-12 pb-8 text-center">
     <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-6">
       <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-      Problem Statement 4 (ProbID - P4) · Vercel Edge Deployment
+      Problem Statement 4 (ProbID - P4) · Edge Deployment & Live Studio
     </div>
     <h1 class="text-4xl md:text-6xl font-black tracking-tight text-white max-w-4xl mx-auto leading-tight">
       Edge-Preserving Depth Map <span class="bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">Super-Resolution & Refinement</span>
     </h1>
-    <p class="mt-6 text-lg text-slate-400 max-w-2xl mx-auto">
-      Reconstructing crisp physical depth discontinuities from sparse, low-resolution sensor inputs by fusing <b>Joint Bilateral Upsampling</b> with <b>Edge-Guided Neural Networks</b> and <b>Measurement Consistency</b>.
+    <p class="mt-4 text-base md:text-lg text-slate-400 max-w-2xl mx-auto">
+      Reconstructing crisp physical depth discontinuities from sparse, low-resolution sensor inputs by fusing <b>Joint Bilateral Upsampling</b> with <b>Edge-Guided Guidance</b> and <b>Measurement Consistency</b>.
     </p>
 
     <!-- KPI Metric Chips -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto mt-12">
-      <div class="p-5 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto mt-8">
+      <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
         <div class="text-xs uppercase font-semibold text-indigo-400 tracking-wider">Hybrid RMSE</div>
-        <div class="text-3xl font-black text-white mt-1">0.0122 m</div>
+        <div class="text-2xl md:text-3xl font-black text-white mt-1">0.0122 m</div>
         <div class="text-xs text-emerald-400 mt-1">NYU Validation x4</div>
       </div>
-      <div class="p-5 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
+      <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
         <div class="text-xs uppercase font-semibold text-emerald-400 tracking-wider">Peak SNR</div>
-        <div class="text-3xl font-black text-white mt-1">59.58 dB</div>
+        <div class="text-2xl md:text-3xl font-black text-white mt-1">59.58 dB</div>
         <div class="text-xs text-slate-400 mt-1">+0.11 dB gain</div>
       </div>
-      <div class="p-5 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
+      <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
         <div class="text-xs uppercase font-semibold text-amber-400 tracking-wider">Edge F1 Score</div>
-        <div class="text-3xl font-black text-white mt-1">0.975</div>
+        <div class="text-2xl md:text-3xl font-black text-white mt-1">0.975</div>
         <div class="text-xs text-slate-400 mt-1">Boundary Precision</div>
       </div>
-      <div class="p-5 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
+      <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-center shadow-lg">
         <div class="text-xs uppercase font-semibold text-sky-400 tracking-wider">SSIM Index</div>
-        <div class="text-3xl font-black text-white mt-1">0.9994</div>
+        <div class="text-2xl md:text-3xl font-black text-white mt-1">0.9994</div>
         <div class="text-xs text-slate-400 mt-1">Structural Fidelity</div>
       </div>
     </div>
   </header>
 
-  <!-- Interactive Swipe Slider Showcase -->
-  <section id="demo" class="max-w-6xl mx-auto px-6 py-12">
-    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-2xl">
-      <div class="flex items-center justify-between mb-4">
+  <!-- Interactive Studio (Live Image Upload & Processing) -->
+  <section id="interactive-studio" class="max-w-6xl mx-auto px-6 py-8">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+      <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-4 mb-6 gap-3">
         <div>
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <span>🔮 Interactive Before / After Split Slider</span>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <span>⚡ Interactive Depth Super-Resolution Studio</span>
           </h2>
-          <p class="text-xs text-slate-400">Drag your mouse or finger across the image to compare Degraded Input vs. Reconstructed Hybrid Depth</p>
+          <p class="text-xs text-slate-400 mt-1">Upload your own RGB image, select presets, simulate sensor noise/holes, and run edge-preserving reconstruction in real-time.</p>
         </div>
-        <span class="text-xs font-mono bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30">Scale: 4x Super-Resolution</span>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            ● Client-Side Real-Time Engine Active
+          </span>
+        </div>
       </div>
 
-      <!-- Slider Container -->
-      <div class="slider-container aspect-[4/3] max-w-3xl mx-auto relative cursor-ew-resize select-none" id="swipeBox">
-        <!-- Before (Degraded LR) -->
-        <img src="assets/2_lr_sensor_input.png" alt="Degraded LR Input" class="w-full h-full object-cover">
-        <div class="absolute top-4 left-4 bg-black/60 backdrop-blur px-3 py-1 rounded text-xs font-mono text-white pointer-events-none">Input: Degraded LR Depth</div>
+      <!-- Grid: Left Controls & Upload / Right Live Output -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        <!-- After (Hybrid Depth) -->
-        <div class="slider-after" id="afterBox">
-          <img src="assets/6_hybrid_optimal.png" alt="Hybrid Reconstructed" class="absolute top-0 left-0 max-w-none h-full" id="afterImg">
-          <div class="absolute top-4 right-4 bg-indigo-600/80 backdrop-blur px-3 py-1 rounded text-xs font-mono text-white pointer-events-none">Output: Hybrid Reconstructed</div>
+        <!-- Column 1: Uploads & Settings (5 Cols) -->
+        <div class="lg:col-span-5 space-y-5">
+          
+          <!-- Preset Scene Selector -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">1. Choose Preset or Upload</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="loadPreset('benchmark')" id="btn-preset-bench" class="p-2 rounded-lg bg-indigo-600/30 border border-indigo-500/50 text-xs font-semibold text-indigo-200 hover:bg-indigo-600/50 transition text-center">
+                🏔️ Benchmark
+              </button>
+              <button onclick="loadPreset('living')" id="btn-preset-living" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center">
+                🛋️ Living Room
+              </button>
+              <button onclick="loadPreset('pillars')" id="btn-preset-pillars" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center">
+                🏛️ Pillars
+              </button>
+            </div>
+          </div>
+
+          <!-- Upload Dropzone: RGB Image -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">2. Upload Your Guidance RGB Image</label>
+            <div id="dropzone-rgb" class="drop-zone p-4 rounded-xl text-center cursor-pointer bg-slate-950/60" onclick="document.getElementById('file-rgb').click()">
+              <input type="file" id="file-rgb" accept="image/*" class="hidden" onchange="handleRgbUpload(event)">
+              <div id="rgb-preview-placeholder">
+                <span class="text-2xl block mb-1">🖼️</span>
+                <span class="text-xs font-semibold text-indigo-400 block">Click or Drag & Drop RGB Image</span>
+                <span class="text-[11px] text-slate-500 block mt-0.5">Supports PNG, JPG, WebP</span>
+              </div>
+              <div id="rgb-preview-box" class="hidden flex items-center gap-3">
+                <img id="rgb-preview-img" class="w-16 h-12 object-cover rounded border border-slate-700">
+                <div class="text-left text-xs">
+                  <div id="rgb-filename" class="font-semibold text-white truncate max-w-[180px]">image.png</div>
+                  <div class="text-emerald-400 text-[11px]">✓ Loaded as RGB Guidance</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload Dropzone: Optional Depth Map -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">3. Low-Resolution Depth Map</label>
+              <span class="text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">Auto-simulated if empty</span>
+            </div>
+            <div id="dropzone-depth" class="drop-zone p-3 rounded-xl text-center cursor-pointer bg-slate-950/60" onclick="document.getElementById('file-depth').click()">
+              <input type="file" id="file-depth" accept="image/*" class="hidden" onchange="handleDepthUpload(event)">
+              <div id="depth-preview-placeholder">
+                <span class="text-xs text-slate-400 block">Optional: Upload custom Depth Map</span>
+                <span class="text-[10px] text-slate-500 block">Otherwise sensor degradation is simulated from RGB</span>
+              </div>
+              <div id="depth-preview-box" class="hidden flex items-center gap-3">
+                <img id="depth-preview-img" class="w-16 h-12 object-cover rounded border border-slate-700">
+                <div class="text-left text-xs">
+                  <div id="depth-filename" class="font-semibold text-white truncate max-w-[180px]">depth.png</div>
+                  <div class="text-emerald-400 text-[11px]">✓ Custom Depth Loaded</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parameters: Scale, Sensor Noise, Holes -->
+          <div class="p-4 rounded-xl bg-slate-950/40 border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-300">Upsampling Scale Factor:</span>
+              <div class="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-0.5">
+                <button type="button" onclick="setScale(2)" id="scale-2" class="px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-white transition">2×</button>
+                <button type="button" onclick="setScale(4)" id="scale-4" class="px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white font-bold transition">4×</button>
+                <button type="button" onclick="setScale(8)" id="scale-8" class="px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-white transition">8×</button>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs text-slate-400 mb-1">
+                <span>Sensor Gaussian Noise:</span>
+                <span id="noise-val" class="font-mono text-indigo-400 font-semibold">2%</span>
+              </div>
+              <input type="range" id="param-noise" min="0" max="10" value="2" step="1" oninput="updateNoiseVal(this.value)" class="w-full accent-indigo-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs text-slate-400 mb-1">
+                <span>Missing Sensor Holes:</span>
+                <span id="hole-val" class="font-mono text-indigo-400 font-semibold">5%</span>
+              </div>
+              <input type="range" id="param-holes" min="0" max="25" value="5" step="1" oninput="updateHoleVal(this.value)" class="w-full accent-indigo-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-xs font-semibold text-slate-300">Colormap Palette:</span>
+              <select id="param-cmap" onchange="runReconstruction()" class="bg-slate-800 border border-slate-700 text-xs rounded px-2 py-1 text-slate-200">
+                <option value="turbo" selected>Turbo (Scientific)</option>
+                <option value="plasma">Plasma</option>
+                <option value="viridis">Viridis</option>
+                <option value="grayscale">Grayscale</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Run Button -->
+          <button onclick="runReconstruction()" id="btn-run" class="w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-500 hover:to-sky-400 text-white shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2">
+            <span id="run-spinner" class="hidden animate-spin">🔄</span>
+            <span id="run-text">⚡ Run Edge-Preserving Super-Resolution</span>
+          </button>
         </div>
 
-        <div class="slider-handle" id="sliderHandle">↔</div>
+        <!-- Column 2: Interactive Before/After Split Viewer (7 Cols) -->
+        <div class="lg:col-span-7 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-white">Interactive Reconstructed Result</span>
+                <span id="status-tag" class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30 font-mono">Scale 4x</span>
+              </div>
+              <span class="text-xs text-slate-400">Drag center handle ↔</span>
+            </div>
+
+            <!-- Dynamic Split Slider Container -->
+            <div class="slider-container aspect-[4/3] w-full relative cursor-ew-resize select-none bg-slate-950 border border-slate-800 shadow-xl" id="swipeBox">
+              <!-- Before Image (Degraded LR) -->
+              <img id="beforeImg" src="assets/2_lr_sensor_input.png" alt="Degraded LR Input" class="w-full h-full object-contain bg-slate-950">
+              <div class="absolute top-3 left-3 bg-black/70 backdrop-blur px-2.5 py-1 rounded text-xs font-mono text-white pointer-events-none border border-white/10">
+                Input: Degraded LR Depth
+              </div>
+
+              <!-- After Image (Reconstructed HR Depth) -->
+              <div class="slider-after" id="afterBox">
+                <img id="afterImg" src="assets/6_hybrid_optimal.png" alt="Reconstructed HR Depth" class="absolute top-0 left-0 max-w-none h-full object-contain" style="width: 100%;">
+                <div class="absolute top-3 right-3 bg-indigo-600/90 backdrop-blur px-2.5 py-1 rounded text-xs font-mono text-white pointer-events-none border border-indigo-400/30">
+                  Output: Edge-Preserved HR
+                </div>
+              </div>
+
+              <div class="slider-handle" id="sliderHandle">↔</div>
+            </div>
+          </div>
+
+          <!-- 1D Scanline Edge Profile Canvas -->
+          <div class="mt-4 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="font-semibold text-slate-300">1D Horizontal Edge Step Profile (Sharp Discontinuity Response)</span>
+              <span class="text-[10px] text-slate-400 font-mono">Row: Y=50%</span>
+            </div>
+            <div class="h-20 w-full relative">
+              <canvas id="scanlineCanvas" class="w-full h-full block rounded"></canvas>
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 bg-rose-400 inline-block"></span> Degraded / Bicubic (Blurred)</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 bg-emerald-400 inline-block"></span> Hybrid Reconstruction (Crisp Edge)</span>
+            </div>
+          </div>
+
+          <!-- Download Action Bar -->
+          <div class="flex items-center gap-3 mt-4">
+            <button onclick="downloadDepthMap()" class="flex-1 py-2.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition flex items-center justify-center gap-2">
+              📥 Download HR Depth Map (.PNG)
+            </button>
+            <a href="https://github.com/RJsr-08/wfeqwfdwe" target="_blank" class="py-2.5 px-4 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
+              ⭐ GitHub Code
+            </a>
+          </div>
+
+        </div>
+
       </div>
     </div>
   </section>
 
   <!-- 8-Panel Comparison Gallery -->
-  <section class="max-w-6xl mx-auto px-6 py-12">
-    <div class="text-center mb-8">
+  <section class="max-w-6xl mx-auto px-6 py-8">
+    <div class="text-center mb-6">
       <h2 class="text-2xl font-extrabold text-white">Full Multi-Track Reconstruction Breakdown</h2>
-      <p class="text-sm text-slate-400">Side-by-side progression from input sensor degradation to 3D boundary alignment</p>
+      <p class="text-sm text-slate-400">Progression from sensor noise and missing holes to edge-aligned depth reconstruction</p>
     </div>
 
     <div class="rounded-2xl border border-slate-800 overflow-hidden bg-slate-900/50 p-2 shadow-2xl">
@@ -116,7 +276,7 @@
   </section>
 
   <!-- Quantitative Scorecard Table -->
-  <section class="max-w-6xl mx-auto px-6 py-12">
+  <section class="max-w-6xl mx-auto px-6 py-8">
     <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-xl">
       <h2 class="text-xl font-bold text-white mb-4">Official NYU-v2 Protocol Verification Scorecard</h2>
       <div class="overflow-x-auto">
@@ -167,7 +327,7 @@
             <tr class="bg-indigo-950/40 text-indigo-200 font-bold border-l-4 border-indigo-500">
               <td class="py-3 px-4 font-sans font-extrabold text-white">Hybrid (Optimal α=0.02 + Consistency)</td>
               <td class="py-3 px-4 text-emerald-400">0.0122</td>
-              <td class="py-3 px-4">0.0036</td>
+              <td class="py-3 px-4 text-emerald-400">0.0036</td>
               <td class="py-3 px-4 text-emerald-400">59.58</td>
               <td class="py-3 px-4">0.9994</td>
               <td class="py-3 px-4 text-emerald-400">0.0536</td>
@@ -180,24 +340,60 @@
     </div>
   </section>
 
+  <!-- Cloud GPU Studio / Hugging Face Spaces Callout -->
+  <section class="max-w-6xl mx-auto px-6 py-6 mb-12">
+    <div class="rounded-2xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-sky-950/80 border border-indigo-500/30 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div>
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>🤗 Hugging Face Spaces & 3D WebGL Studio</span>
+        </h3>
+        <p class="text-xs text-slate-300 mt-1">
+          For full PyTorch GPU inference with 3D interactive mesh rotation, scanline profiling, and `.OBJ` export, run <code class="bg-black/50 px-2 py-0.5 rounded font-mono text-indigo-300">python app.py</code> or deploy directly to Hugging Face Spaces.
+        </p>
+      </div>
+      <a href="https://github.com/RJsr-08/wfeqwfdwe#deploying-to-hugging-face-spaces-gradio-studio" target="_blank" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition whitespace-nowrap shadow-lg shadow-indigo-600/30">
+        HF Spaces Guide →
+      </a>
+    </div>
+  </section>
+
   <!-- Footer -->
   <footer class="border-t border-slate-900 py-8 text-center text-xs text-slate-500">
     <p>Computer Vision Hackathon 2026 · Problem Statement 4 (ProbID - P4)</p>
     <p class="mt-1">Rakshitha (Deep Learning) · Tanush (Classical CV) · Rishita (Hybrid Fusion) · Kumar (Integration & Deployment)</p>
   </footer>
 
-  <!-- Script for Interactive Split Slider -->
+  <!-- Offscreen Processing Canvases -->
+  <canvas id="offscreenCanvas" class="hidden"></canvas>
+  <canvas id="lrCanvas" class="hidden"></canvas>
+  <canvas id="hrCanvas" class="hidden"></canvas>
+
+  <!-- Core Interactive Script & Real-Time Engine -->
   <script>
+    // State
+    let currentScale = 4;
+    let currentNoise = 0.02;
+    let currentHoles = 0.05;
+    let currentPreset = 'benchmark';
+    let loadedRgbImg = null;
+    let loadedDepthImg = null;
+    let lastGeneratedHrDataUrl = null;
+
+    // Elements
     const box = document.getElementById('swipeBox');
     const afterBox = document.getElementById('afterBox');
     const afterImg = document.getElementById('afterImg');
+    const beforeImg = document.getElementById('beforeImg');
     const handle = document.getElementById('sliderHandle');
+    const scanlineCanvas = document.getElementById('scanlineCanvas');
 
+    // Slider logic
     function syncDimensions() {
-      afterImg.style.width = box.offsetWidth + 'px';
+      if (box && afterImg) {
+        afterImg.style.width = box.offsetWidth + 'px';
+      }
     }
     window.addEventListener('resize', syncDimensions);
-    syncDimensions();
 
     function setPosition(x) {
       const rect = box.getBoundingClientRect();
@@ -215,6 +411,421 @@
     box.addEventListener('touchstart', (e) => { isDragging = true; setPosition(e.touches[0].clientX); });
     window.addEventListener('touchend', () => { isDragging = false; });
     window.addEventListener('touchmove', (e) => { if (isDragging) setPosition(e.touches[0].clientX); });
+
+    // Controls handlers
+    function setScale(s) {
+      currentScale = s;
+      [2, 4, 8].forEach(v => {
+        const btn = document.getElementById('scale-' + v);
+        if (v === s) {
+          btn.className = "px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white font-bold transition";
+        } else {
+          btn.className = "px-2.5 py-1 text-xs rounded-md text-slate-400 hover:text-white transition";
+        }
+      });
+      document.getElementById('status-tag').innerText = 'Scale ' + s + 'x';
+      runReconstruction();
+    }
+
+    function updateNoiseVal(v) {
+      currentNoise = parseInt(v) / 100.0;
+      document.getElementById('noise-val').innerText = v + '%';
+    }
+
+    function updateHoleVal(v) {
+      currentHoles = parseInt(v) / 100.0;
+      document.getElementById('hole-val').innerText = v + '%';
+    }
+
+    // Colormap computation
+    function evaluateColormap(val, type) {
+      val = Math.max(0, Math.min(1, val));
+      if (type === 'grayscale') {
+        const c = Math.round(val * 255);
+        return [c, c, c];
+      }
+      if (type === 'plasma') {
+        const r = Math.round(255 * (0.0587 + 0.94 * Math.sin(1.57 * val)));
+        const g = Math.round(255 * (0.0154 + 0.98 * Math.sin(3.14 * Math.max(0, val - 0.15))));
+        const b = Math.round(255 * (0.54 + 0.46 * Math.cos(3.14 * val)));
+        return [r, g, b];
+      }
+      if (type === 'viridis') {
+        const r = Math.round(255 * (0.26 + 0.65 * val));
+        const g = Math.round(255 * (0.02 + 0.88 * Math.sin(2.4 * val)));
+        const b = Math.round(255 * (0.33 + 0.45 * Math.cos(2.8 * val)));
+        return [r, g, b];
+      }
+      // Default: Turbo
+      const r = 0.13572138 + 4.61539260*val - 42.66032258*val*val + 132.13108234*Math.pow(val,3) - 152.94239396*Math.pow(val,4) + 59.28637943*Math.pow(val,5);
+      const g = 0.09140261 + 2.19418839*val + 4.84296658*val*val - 14.18503333*Math.pow(val,3) + 4.27729857*Math.pow(val,4) + 2.82956604*Math.pow(val,5);
+      const b = 0.10667330 + 12.64194608*val - 60.58204836*val*val + 110.36276771*Math.pow(val,3) - 89.90310912*Math.pow(val,4) + 27.34824973*Math.pow(val,5);
+      return [
+        Math.max(0, Math.min(255, Math.round(r * 255))),
+        Math.max(0, Math.min(255, Math.round(g * 255))),
+        Math.max(0, Math.min(255, Math.round(b * 255)))
+      ];
+    }
+
+    // Preset loader
+    function loadPreset(name) {
+      currentPreset = name;
+      ['bench', 'living', 'pillars'].forEach(k => {
+        const btn = document.getElementById('btn-preset-' + k);
+        if (k === (name === 'benchmark' ? 'bench' : name)) {
+          btn.className = "p-2 rounded-lg bg-indigo-600/30 border border-indigo-500/50 text-xs font-semibold text-indigo-200 hover:bg-indigo-600/50 transition text-center";
+        } else {
+          btn.className = "p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center";
+        }
+      });
+
+      // Reset custom previews
+      document.getElementById('rgb-preview-placeholder').classList.remove('hidden');
+      document.getElementById('rgb-preview-box').classList.add('hidden');
+      document.getElementById('depth-preview-placeholder').classList.remove('hidden');
+      document.getElementById('depth-preview-box').classList.add('hidden');
+      loadedRgbImg = null;
+      loadedDepthImg = null;
+
+      // Load preset image
+      let presetFile = 'curved_sphere';
+      if (name === 'living') presetFile = 'living_room';
+      if (name === 'pillars') presetFile = 'pillars';
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        loadedRgbImg = img;
+        runReconstruction();
+      };
+      img.src = 'assets/presets/' + presetFile + '_rgb.png';
+    }
+
+    // Handle Uploads
+    function handleRgbUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          loadedRgbImg = img;
+          document.getElementById('rgb-preview-placeholder').classList.add('hidden');
+          document.getElementById('rgb-preview-box').classList.remove('hidden');
+          document.getElementById('rgb-preview-img').src = event.target.result;
+          document.getElementById('rgb-filename').innerText = file.name;
+          runReconstruction();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleDepthUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          loadedDepthImg = img;
+          document.getElementById('depth-preview-placeholder').classList.add('hidden');
+          document.getElementById('depth-preview-box').classList.remove('hidden');
+          document.getElementById('depth-preview-img').src = event.target.result;
+          document.getElementById('depth-filename').innerText = file.name;
+          runReconstruction();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Core Reconstruction Engine
+    function runReconstruction() {
+      const runBtn = document.getElementById('btn-run');
+      const spinner = document.getElementById('run-spinner');
+      const runText = document.getElementById('run-text');
+      spinner.classList.remove('hidden');
+      runText.innerText = "Processing...";
+
+      setTimeout(() => {
+        try {
+          processPipeline();
+        } finally {
+          spinner.classList.add('hidden');
+          runText.innerText = "⚡ Run Edge-Preserving Super-Resolution";
+        }
+      }, 30);
+    }
+
+    function processPipeline() {
+      const offscreen = document.getElementById('offscreenCanvas');
+      const ctx = offscreen.getContext('2d', { willReadFrequently: true });
+      const cmapType = document.getElementById('param-cmap').value;
+
+      // Base target resolution
+      const targetW = 320;
+      const targetH = 240;
+      offscreen.width = targetW;
+      offscreen.height = targetH;
+
+      // Draw RGB Guide to canvas
+      if (loadedRgbImg) {
+        ctx.drawImage(loadedRgbImg, 0, 0, targetW, targetH);
+      } else {
+        // Fallback synthetic benchmark
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(0, 0, targetW, targetH);
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillRect(40, 40, 110, 110);
+        ctx.fillStyle = "#a855f7";
+        ctx.beginPath();
+        ctx.arc(220, 130, 50, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const rgbImgData = ctx.getImageData(0, 0, targetW, targetH);
+      const rgbPixels = rgbImgData.data;
+
+      // Generate or extract depth
+      const depthGroundTruth = new Float32Array(targetW * targetH);
+      if (loadedDepthImg) {
+        ctx.clearRect(0, 0, targetW, targetH);
+        ctx.drawImage(loadedDepthImg, 0, 0, targetW, targetH);
+        const depthData = ctx.getImageData(0, 0, targetW, targetH).data;
+        for (let i = 0; i < targetW * targetH; i++) {
+          depthGroundTruth[i] = (depthData[i * 4] * 0.299 + depthData[i * 4 + 1] * 0.587 + depthData[i * 4 + 2] * 0.114) / 255.0;
+        }
+      } else {
+        // Synthesize physical depth with sharp object steps matching RGB edges
+        for (let y = 0; y < targetH; y++) {
+          for (let x = 0; x < targetW; x++) {
+            const idx = y * targetW + x;
+            const pIdx = idx * 4;
+            const r = rgbPixels[pIdx], g = rgbPixels[pIdx + 1], b = rgbPixels[pIdx + 2];
+            const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
+            // Base background gradient + foreground depth discontinuity
+            let d = 0.85 - 0.45 * (y / targetH);
+            if (lum > 0.45) d = 0.25 + 0.1 * lum; // foreground step
+            depthGroundTruth[idx] = Math.max(0.05, Math.min(0.95, d));
+          }
+        }
+      }
+
+      // Simulate Low-Resolution Sensor Input (Downsample + Noise + Holes)
+      const scale = currentScale;
+      const lrW = Math.floor(targetW / scale);
+      const lrH = Math.floor(targetH / scale);
+      const lrDepth = new Float32Array(lrW * lrH);
+      const lrMask = new Uint8Array(lrW * lrH); // 1 = valid, 0 = missing hole
+
+      for (let ly = 0; ly < lrH; ly++) {
+        for (let lx = 0; lx < lrW; lx++) {
+          const lIdx = ly * lrW + lx;
+          const hx = Math.min(targetW - 1, lx * scale + Math.floor(scale / 2));
+          const hy = Math.min(targetH - 1, ly * scale + Math.floor(scale / 2));
+          let val = depthGroundTruth[hy * targetW + hx];
+
+          // Add Gaussian noise
+          if (currentNoise > 0) {
+            val += (Math.random() - 0.5) * currentNoise * 2.5;
+          }
+
+          // Add Missing Sensor Holes
+          if (Math.random() < currentHoles) {
+            lrDepth[lIdx] = 0;
+            lrMask[lIdx] = 0;
+          } else {
+            lrDepth[lIdx] = Math.max(0.01, Math.min(1.0, val));
+            lrMask[lIdx] = 1;
+          }
+        }
+      }
+
+      // Render Degraded LR Depth (Colorized)
+      const lrCanvas = document.getElementById('lrCanvas');
+      lrCanvas.width = targetW;
+      lrCanvas.height = targetH;
+      const lrCtx = lrCanvas.getContext('2d');
+      const lrImgData = lrCtx.createImageData(targetW, targetH);
+      const lrPixels = lrImgData.data;
+
+      for (let y = 0; y < targetH; y++) {
+        const ly = Math.min(lrH - 1, Math.floor(y / scale));
+        for (let x = 0; x < targetW; x++) {
+          const lx = Math.min(lrW - 1, Math.floor(x / scale));
+          const lIdx = ly * lrW + lx;
+          const pIdx = (y * targetW + x) * 4;
+
+          if (lrMask[lIdx] === 0) {
+            // Missing hole: render as black dot
+            lrPixels[pIdx] = 15;
+            lrPixels[pIdx + 1] = 23;
+            lrPixels[pIdx + 2] = 42;
+            lrPixels[pIdx + 3] = 255;
+          } else {
+            const rgb = evaluateColormap(lrDepth[lIdx], cmapType);
+            lrPixels[pIdx] = rgb[0];
+            lrPixels[pIdx + 1] = rgb[1];
+            lrPixels[pIdx + 2] = rgb[2];
+            lrPixels[pIdx + 3] = 255;
+          }
+        }
+      }
+      lrCtx.putImageData(lrImgData, 0, 0);
+      beforeImg.src = lrCanvas.toDataURL('image/png');
+
+      // Joint Bilateral Upsampling (JBU) + Discontinuity Refinement
+      const hrCanvas = document.getElementById('hrCanvas');
+      hrCanvas.width = targetW;
+      hrCanvas.height = targetH;
+      const hrCtx = hrCanvas.getContext('2d');
+      const hrImgData = hrCtx.createImageData(targetW, targetH);
+      const hrPixels = hrImgData.data;
+      const reconstructedHr = new Float32Array(targetW * targetH);
+
+      const sigmaS = scale * 1.2;
+      const sigmaR = 0.12;
+      const radius = Math.ceil(scale * 1.5);
+
+      for (let y = 0; y < targetH; y++) {
+        for (let x = 0; x < targetW; x++) {
+          const hIdx = y * targetW + x;
+          const pIdx = hIdx * 4;
+          const centerR = rgbPixels[pIdx] / 255.0;
+          const centerG = rgbPixels[pIdx + 1] / 255.0;
+          const centerB = rgbPixels[pIdx + 2] / 255.0;
+
+          const lxCenter = x / scale;
+          const lyCenter = y / scale;
+
+          let sumWeights = 0.0;
+          let sumDepth = 0.0;
+
+          const minLy = Math.max(0, Math.floor(lyCenter - radius));
+          const maxLy = Math.min(lrH - 1, Math.ceil(lyCenter + radius));
+          const minLx = Math.max(0, Math.floor(lxCenter - radius));
+          const maxLx = Math.min(lrW - 1, Math.ceil(lxCenter + radius));
+
+          for (let ly = minLy; ly <= maxLy; ly++) {
+            for (let lx = minLx; lx <= maxLx; lx++) {
+              const lIdx = ly * lrW + lx;
+              if (lrMask[lIdx] === 0) continue; // Skip invalid hole pixels
+
+              const distS = (lx - lxCenter) * (lx - lxCenter) + (ly - lyCenter) * (ly - lyCenter);
+              const wS = Math.exp(-distS / (2 * sigmaS * sigmaS));
+
+              // Guidance color distance at neighbor position
+              const guideX = Math.min(targetW - 1, Math.floor(lx * scale));
+              const guideY = Math.min(targetH - 1, Math.floor(ly * scale));
+              const gIdx = (guideY * targetW + guideX) * 4;
+              const nR = rgbPixels[gIdx] / 255.0;
+              const nG = rgbPixels[gIdx + 1] / 255.0;
+              const nB = rgbPixels[gIdx + 2] / 255.0;
+
+              const distR = (centerR - nR)**2 + (centerG - nG)**2 + (centerB - nB)**2;
+              const wR = Math.exp(-distR / (2 * sigmaR * sigmaR));
+
+              const weight = wS * wR;
+              sumWeights += weight;
+              sumDepth += weight * lrDepth[lIdx];
+            }
+          }
+
+          let finalD = 0.5;
+          if (sumWeights > 1e-5) {
+            finalD = sumDepth / sumWeights;
+          } else {
+            // Nearest neighbor fallback for dense hole areas
+            const fallbackLx = Math.min(lrW - 1, Math.max(0, Math.round(lxCenter)));
+            const fallbackLy = Math.min(lrH - 1, Math.max(0, Math.round(lyCenter)));
+            finalD = lrDepth[fallbackLy * lrW + fallbackLx] || 0.5;
+          }
+
+          reconstructedHr[hIdx] = finalD;
+          const colored = evaluateColormap(finalD, cmapType);
+          hrPixels[pIdx] = colored[0];
+          hrPixels[pIdx + 1] = colored[1];
+          hrPixels[pIdx + 2] = colored[2];
+          hrPixels[pIdx + 3] = 255;
+        }
+      }
+
+      hrCtx.putImageData(hrImgData, 0, 0);
+      lastGeneratedHrDataUrl = hrCanvas.toDataURL('image/png');
+      afterImg.src = lastGeneratedHrDataUrl;
+      syncDimensions();
+
+      // Render 1D Scanline Step Profile
+      renderScanline(depthGroundTruth, reconstructedHr, targetW, targetH);
+    }
+
+    // 1D Scanline Renderer
+    function renderScanline(gt, hr, w, h) {
+      if (!scanlineCanvas) return;
+      const sCtx = scanlineCanvas.getContext('2d');
+      const cW = scanlineCanvas.parentElement.clientWidth || 300;
+      const cH = scanlineCanvas.parentElement.clientHeight || 80;
+      scanlineCanvas.width = cW;
+      scanlineCanvas.height = cH;
+
+      sCtx.fillStyle = "#020617";
+      sCtx.fillRect(0, 0, cW, cH);
+
+      // Grid line
+      sCtx.strokeStyle = "#1e293b";
+      sCtx.lineWidth = 1;
+      sCtx.beginPath();
+      sCtx.moveTo(0, cH / 2);
+      sCtx.lineTo(cW, cH / 2);
+      sCtx.stroke();
+
+      const midY = Math.floor(h / 2);
+
+      // Draw Degraded / Blurred Profile (Rose Line)
+      sCtx.strokeStyle = "#fb7185";
+      sCtx.lineWidth = 1.5;
+      sCtx.beginPath();
+      for (let x = 0; x < w; x++) {
+        const canX = (x / w) * cW;
+        // Simulate blurred step
+        const blurX = Math.floor(x / currentScale) * currentScale;
+        const val = gt[midY * w + blurX];
+        const canY = cH - (val * (cH - 10) + 5);
+        if (x === 0) sCtx.moveTo(canX, canY);
+        else sCtx.lineTo(canX, canY);
+      }
+      sCtx.stroke();
+
+      // Draw Reconstructed HR Step Profile (Emerald Line)
+      sCtx.strokeStyle = "#34d399";
+      sCtx.lineWidth = 2;
+      sCtx.beginPath();
+      for (let x = 0; x < w; x++) {
+        const canX = (x / w) * cW;
+        const val = hr[midY * w + x];
+        const canY = cH - (val * (cH - 10) + 5);
+        if (x === 0) sCtx.moveTo(canX, canY);
+        else sCtx.lineTo(canX, canY);
+      }
+      sCtx.stroke();
+    }
+
+    // Download Depth Map
+    function downloadDepthMap() {
+      if (!lastGeneratedHrDataUrl) return;
+      const a = document.createElement('a');
+      a.href = lastGeneratedHrDataUrl;
+      a.download = 'reconstructed_hr_depth.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // Initial Load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadPreset('benchmark');
+    });
   </script>
 </body>
 </html>
