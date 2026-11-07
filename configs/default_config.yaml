@@ -1,0 +1,34 @@
+# P4 Depth Super-Resolution Configuration
+system:
+  device: "auto"        # "cuda", "cpu", or "auto"
+  seed: 42
+
+data:
+  default_scale: 4
+  min_depth: 0.1
+  max_depth: 10.0
+  supported_scales: [2, 4, 8]
+
+classical:
+  default_method: "jbu"  # "jbu", "guided", "bicubic", "bilinear", "nearest"
+  jbu:
+    radius: 3
+    sigma_spatial: 2.5
+    sigma_range: 0.1
+  guided:
+    radius: 6
+    eps: 0.001
+  hole_filling:
+    max_hole_radius: 5
+
+deep:
+  model_name: "EdgeGuidedSRNet"
+  num_feats: 32
+
+hybrid:
+  default_method: "fixed"     # "fixed" or "confidence"
+  alpha: 0.02                 # Calibrated optimal classical weight
+  use_consistency: true       # Backward measurement consistency projection
+  consistency_gain: 0.3
+  use_refinement: false       # Boundary refinement (keep false by default per ablation)
+  refinement_thresh: 0.04
