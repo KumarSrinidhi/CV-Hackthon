@@ -59,15 +59,16 @@ def test_confidence_overlay_heat_is_rgb():
 
 def test_run_reconstruction_returns_rgb_and_red_boundaries(tmp_path, monkeypatch):
     monkeypatch.setenv("SGNET_CKPT_DIR", str(tmp_path / "empty_ckpt"))
-    from app.ui import run_reconstruction
+    from app.ui import process
 
     lr = np.tile(np.array([2, 2, 5, 5], np.float32), (4, 1))
     depth_file = tmp_path / "lr.npy"
     np.save(depth_file, lr)
     rgb = np.zeros((16, 16, 3), np.uint8)
     rgb[:, 7:] = 200
-    colormap, boundaries, conf_c, conf_d = run_reconstruction(rgb, str(depth_file), None, 4, "hybrid")
-    for img in (colormap, boundaries, conf_c, conf_d):
+    o = process(rgb, str(depth_file), None, 4)
+    colormap, boundaries = o["depth"], o["boundaries"]
+    for img in (colormap, boundaries):
         assert img.shape == (16, 16, 3) and img.dtype == np.uint8
     assert (boundaries == np.uint8([255, 0, 0])).all(axis=2).any()  # red in RGB
     assert not (boundaries == np.uint8([0, 0, 255])).all(axis=2).any()  # no BGR-red artefact
@@ -81,22 +82,9 @@ def test_export_png_and_npy(tmp_path):
     np.testing.assert_array_equal(np.load(npy), d)
 
 
-def test_reconstruct_nearest_shape():
-    rgb = np.zeros((8, 8, 3), np.uint8)
-    lr = np.full((2, 2), 4.0, np.float32)
-    out = reconstruct(rgb, lr, None, 4, "nearest")
-    assert out["depth"].shape == (8, 8)
-    assert out["depth"].dtype == np.float32
-
-
-def test_reconstruct_hybrid_shape():
+def test_reconstruct_shape():
     rgb = np.zeros((16, 16, 3), np.uint8)
     lr = np.tile(np.array([2, 2, 5, 5], np.float32), (4, 1))
-    out = reconstruct(rgb, lr, None, 4, "hybrid")
+    out = reconstruct(rgb, lr, None, 4)
     assert out["depth"].shape == (16, 16)
     assert np.isfinite(out["depth"]).all()
-
-
-def test_reconstruct_unknown_method_raises():
-    with pytest.raises(ValueError, match="Unknown method"):
-        reconstruct(np.zeros((8, 8, 3), np.uint8), np.ones((2, 2), np.float32), None, 4, "nope")
