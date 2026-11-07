@@ -43,11 +43,17 @@ is correctly reported as "not evaluated" by `eval/evaluate.py` when no checkpoin
 
 ## Application — ✅
 
-- ✅ CLI (`main.py`) — reconstruction, PNG/NPY export, metrics with GT.
-- ✅ Visualization/export (`app/visualization.py`).
-- ⚠️ Gradio UI (`app/ui.py`) written but **not launched** (gradio not installed locally).
+- ✅ CLI (`main.py`) — validated inputs, PNG/NPY export, metrics + error map with GT, `--compare`.
+- ✅ Config (`configs/default_config.yaml`, `app/config.py`) — frozen hybrid: fixed alpha 0.02 + consistency.
+- ✅ Input validation (`app/validation.py`) — clear errors for shape/scale/mask/method problems.
+- ✅ Visualization/export/side-by-side comparison (`app/visualization.py`).
+- ✅ Hybrid wired with the frozen config; explicit classical fallback when deep is unavailable.
+- ⚠️ Gradio UI (`app/ui.py`) — all logic is in the Gradio-free `process()` and is tested; the
+  Blocks layout itself was **not launched** (gradio not installed in the build environment).
 
-Evidence: `tests/test_app.py` (9 passed); CLI verified end-to-end on synthetic data.
+Evidence: `tests/test_app.py` (9) and `tests/test_integration.py` (16) pass; CLI verified on synthetic
+data. Hybrid wiring is verified with an injected deep branch (alpha 0.02 + consistency reproduced
+exactly); real deep/hybrid inference still needs torch + the SGNet checkpoint.
 
 ## Pending / blocked
 

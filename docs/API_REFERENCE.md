@@ -58,5 +58,19 @@ from eval.metrics import compute_all_metrics   # -> dict of metrics
 
 ```bash
 python main.py --rgb RGB.png --depth depth.npy [--mask mask.npy] \
-    --scale 4 --method hybrid [--gt gt.npy] --output out/
+    --scale 4 --method hybrid [--gt gt.npy] [--compare] [--depth-scale 0.001] --output out/
 ```
+
+```python
+from main import reconstruct, compare, comparison_image
+reconstruct(rgb, lr_depth, valid_mask=None, scale=4, method="hybrid", config=None)
+# -> {"depth", "method", "requested_method", "fallback", "notes", "intermediates"}
+compare(rgb, lr_depth, valid_mask, scale, methods=("bicubic", "classical", "hybrid"))
+from app.config import load_config, hybrid_kwargs     # configs/default_config.yaml
+from app.validation import validate_inputs            # clear ValueError messages
+from app.ui import process                            # Gradio-free UI core
+```
+
+`reconstruct` validates inputs first, applies the frozen hybrid settings from the config, and
+degrades hybrid to classical **explicitly** (`fallback=True`, reason in `notes`) when the deep
+branch is unavailable or the scale is unsupported.

@@ -3,7 +3,7 @@
 An edge-aware, hybrid depth reconstruction system that transforms **sparse or
 low-resolution depth maps** into **dense, high-resolution depth**, preserving object
 boundaries and depth discontinuities. It combines classical computer vision,
-deep-learning depth super-resolution, and a confidence-guided hybrid fusion.
+deep-learning depth super-resolution, and a fixed-weight (alpha 0.02) hybrid fusion with measurement consistency.
 
 ## What is implemented
 
@@ -13,7 +13,7 @@ deep-learning depth super-resolution, and a confidence-guided hybrid fusion.
 | Deep | `deep/` — SGNet (guided depth super-resolution), dataset loaders, degradation, preprocessing, inference | Implemented (needs checkpoint) |
 | Hybrid | `hybrid/` — confidence estimation, adaptive fusion, boundary refinement, measurement consistency | Implemented & tested (needs deep branch) |
 | Evaluation | `eval/` — RMSE, MAE, PSNR, SSIM, boundary RMSE, edge F1, benchmark | Implemented |
-| Application | `main.py` (CLI) + `app/ui.py` (Gradio) + `app/visualization.py` (export) | Implemented |
+| Application | `main.py` (CLI) + `app/ui.py` (Gradio) + `app/visualization.py` (export/compare) + `app/config.py` / `app/validation.py` (config, input checks) | Implemented |
 
 ## Quick start
 
@@ -23,12 +23,19 @@ pip install -r requirements.txt          # or: uv pip install -r requirements.tx
 # For the web UI only:
 pip install gradio
 
-# Run reconstruction
+# Run reconstruction (add --compare for a side-by-side image, --gt for metrics + error map)
 python main.py --rgb RGB.png --depth depth.npy --scale 4 --method hybrid --output out/
 
+# Web UI (needs gradio)
+python -m app.ui
+
 # Run tests
-pytest tests/                            # 90 passed, 1 skipped (CUDA-only test)
+pytest tests/
 ```
+
+The full suite needs `torch` for one deep-dependent test
+(`test_consistency_sweep_method_name_is_supported`); without torch that single test fails
+and everything else passes. See `docs/APP_GUIDE.md` for the demo workflow and deployment.
 
 ## Reconstruction methods
 
@@ -37,7 +44,7 @@ pytest tests/                            # 90 passed, 1 skipped (CUDA-only test)
 - `guided` — guided filter
 - `classical`, `adaptive_jbu`, `refined_jbu` — classical edge-preserving variants
 - `deep` — SGNet (scales 4/8/16; requires the official checkpoint)
-- `hybrid` — confidence-guided fusion of classical + deep
+- `hybrid` — **fixed alpha 0.02 fusion of classical + deep, then measurement consistency** (frozen config)
 
 ## Stable interfaces
 
@@ -56,7 +63,15 @@ Conventions (frozen in `data/preprocessing.py`):
 
 ## Hybrid fusion
 
-The hybrid combines the classical reconstruction `D_c` and deep reconstruction `D_d`
+**Frozen final configuration** (`configs/default_config.yaml`, section `hybrid`):
+`D_f = 0.02 * D_c + 0.98 * D_d`, followed by measurement-consistency correction
+(`strength 0.25`, 1 iteration); boundary refinement off. It was chosen on NYU validation
+(30 images, x4): fixed alpha 0.02 gave the lowest RMSE (0.0123, vs. 0.0123 for the deep
+branch alone), so the **gain over deep-only is marginal** and the classical branch is a
+safeguard more than a contributor. The adaptive confidence fusion described below remains
+available by setting `hybrid.classical_alpha: null`.
+
+The general form of the fusion is the classical reconstruction `D_c` and deep reconstruction `D_d`
 per pixel:
 
 ```
@@ -70,8 +85,8 @@ D_f = W_c * D_c + W_d * D_d,   W_c + W_d == 1
 3. **RGB/depth edge agreement** — where an RGB edge agrees with a depth
    discontinuity (classical preferred).
 
-The fused map then gets boundary-aware refinement and, when the forward degradation
-operator is known, a measurement-consistency correction
+Boundary refinement is optional and disabled by default. Because the forward degradation
+operator is known (bicubic), the fused map receives a damped measurement-consistency correction
 `r_LR = D_LR - S(D_f)`. See `docs/HYBRID_FUSION.md`.
 
 The weights are **normalized confidence scores, not calibrated probabilities**. A

@@ -75,3 +75,31 @@
 Original depth measurements and validity masks are **never modified in place** and
 **never confused with filled values**. Depth discontinuities are detected from depth
 first; RGB edges are supporting evidence only.
+
+## Design specification vs. what is implemented
+
+The design specification (the "Complete System Architecture" document) is the target;
+this table records where the shipped code follows it and where it deliberately differs.
+
+| Spec item | Status |
+|---|---|
+| Input validation (dims, scale, invalid depth, RGB-depth alignment) | Implemented in `app/validation.py` |
+| Original depth / validity mask preserved | Implemented; branches work on copies |
+| Classical branch (interpolation, JBU, GF, hole filling, boundary refinement) | Implemented (`classical/`); no separate `joint_bilateral.py`, JBU lives in `jbu.py` |
+| Deep branch | **SGNet** (x4/x8/x16). FGGNet is not implemented. |
+| Confidence estimation + confidence-guided fusion | Implemented, but the **deployed default is fixed alpha 0.02** (validation winner); adaptive fusion is opt-in via config |
+| Measurement consistency `r_LR = D_LR - S(D_f)` | Implemented, enabled (strength 0.25) because the bicubic operator is known |
+| Adaptive boundary refinement (`B*JBF + (1-B)*GF`) | A refinement exists but is **off by default**: it raised validation RMSE (0.0141 vs 0.0123) |
+| Scales 2x / 4x / 8x | Classical x2/4/8/16; deep and hybrid x4/8/16 (x2 falls back to classical, flagged) |
+| Output layer: RGB, LR depth, classical, deep, hybrid, error map | Side-by-side `comparison` image (shared colour range) + error map with GT |
+| Export PNG / NPY | Implemented |
+| Export PLY point cloud | Not implemented (optional; needs camera intrinsics) |
+| Model uncertainty in confidence | Not available from SGNet |
+| Peak GPU memory / ablation scripts | In `eval/` (Rakshitha) |
+
+**Deployment principle from the spec:** the hybrid should show measurable improvement over both
+standalone branches, otherwise the best standalone method should be deployed. On the 30-image NYU
+validation subset the fixed-alpha hybrid (RMSE 0.0123) is statistically indistinguishable from the
+deep branch alone (0.0123), so the improvement is **not demonstrated**. The hybrid is kept as the
+default per the team decision; if a larger evaluation shows no gain, switch the app default to
+`deep` by setting `app.default_method: deep` in `configs/default_config.yaml`.
