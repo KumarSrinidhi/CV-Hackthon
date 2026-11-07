@@ -33,6 +33,16 @@ python -m app.ui
 pytest tests/
 ```
 
+### Google Colab
+
+Open [`CV_Hackthon_Colab.ipynb`](./CV_Hackthon_Colab.ipynb) in Google Colab and run
+the cells from top to bottom. Select a GPU runtime for SGNet inference. The notebook
+clones this repository, installs the runtime dependencies, uploads RGB/depth inputs,
+runs the same `main.reconstruct` pipeline as the CLI and Gradio app, displays the
+results, and downloads the generated depth files. SGNet checkpoints are not stored in
+Git; upload them in the optional checkpoint cell to enable the deep branch. Without
+them, the notebook reports and uses the explicit classical fallback.
+
 The full suite needs `torch` for one deep-dependent test
 (`test_consistency_sweep_method_name_is_supported`); without torch that single test fails
 and everything else passes. See `docs/APP_GUIDE.md` for the demo workflow and deployment.
