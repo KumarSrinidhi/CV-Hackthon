@@ -47,17 +47,22 @@ def export_depth_to_ply(
         colors = colors[indices]
         num_points = max_points
 
-    with open(output_path, "w") as f:
-        f.write("ply\nformat ascii 1.0\n")
-        f.write(f"element vertex {num_points}\n")
-        f.write("property float x\nproperty float y\nproperty float z\n")
-        f.write("property uchar red\nproperty uchar green\nproperty uchar blue\n")
-        f.write("end_header\n")
-        for i in range(num_points):
-            f.write(
-                f"{x_3d[i]:.4f} {-y_3d[i]:.4f} {z[i]:.4f} "
-                f"{colors[i, 0]} {colors[i, 1]} {colors[i, 2]}\n"
-            )
+    header = (
+        "ply\nformat ascii 1.0\n"
+        f"element vertex {num_points}\n"
+        "property float x\nproperty float y\nproperty float z\n"
+        "property uchar red\nproperty uchar green\nproperty uchar blue\n"
+        "end_header\n"
+    )
+
+    data = np.column_stack([
+        x_3d, -y_3d, z,
+        colors[:, 0], colors[:, 1], colors[:, 2]
+    ])
+
+    with open(output_path, "wb") as f:
+        f.write(header.encode("ascii"))
+        np.savetxt(f, data, fmt="%.4f %.4f %.4f %d %d %d")
 
     return output_path
 

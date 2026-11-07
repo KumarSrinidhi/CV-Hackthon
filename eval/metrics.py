@@ -59,6 +59,10 @@ def compute_psnr(
     mask: Optional[np.ndarray] = None,
 ) -> float:
     """Compute Peak Signal-to-Noise Ratio (PSNR) in dB."""
+    if isinstance(max_val, np.ndarray) and mask is None:
+        mask = max_val
+        max_val = None
+
     rmse = compute_rmse(pred, gt, mask=mask)
     if rmse < 1e-8:
         return 100.0
@@ -75,6 +79,9 @@ def compute_ssim(
     mask: Optional[np.ndarray] = None,
 ) -> float:
     """Compute Structural Similarity Index (SSIM)."""
+    if isinstance(max_val, np.ndarray) and mask is None:
+        mask = max_val
+        max_val = None
     pred_clean = np.nan_to_num(pred.copy(), nan=0.0)
     gt_clean = np.nan_to_num(gt.copy(), nan=0.0)
     if max_val is None:

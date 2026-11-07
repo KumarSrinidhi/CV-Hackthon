@@ -1,0 +1,65 @@
+{
+  "sample_id": "sample_11",
+  "category": "primitive",
+  "scene": "prim_three_spheres",
+  "seed": 2001,
+  "hr_size": [
+    512,
+    512
+  ],
+  "scales": [
+    2,
+    4,
+    8
+  ],
+  "depth_unit": "meters",
+  "depth_dtype": "float32",
+  "lr_depth_files": [
+    "lr_depth_2x.npy",
+    "lr_depth_4x.npy",
+    "lr_depth_8x.npy"
+  ],
+  "lr_mask_files": [
+    "lr_mask_2x.npy",
+    "lr_mask_4x.npy",
+    "lr_mask_8x.npy"
+  ],
+  "lr_shapes": {
+    "2x": [
+      256,
+      256
+    ],
+    "4x": [
+      128,
+      128
+    ],
+    "8x": [
+      64,
+      64
+    ]
+  },
+  "camera": {
+    "fov_deg": 60.0,
+    "focal_px": 443.4050067376326,
+    "cx_px": 255.5,
+    "cy_px": 255.5,
+    "eye": [
+      0,
+      0,
+      0
+    ],
+    "look_dir": [
+      0,
+      0,
+      1
+    ],
+    "up": [
+      0,
+      1,
+      0
+    ]
+  },
+  "mask_convention": "1 = valid (has real depth, not a hole); 0 = invalid (sensor hole OR background/sky with no depth)",
+  "lr_depth_hole_value": 0.0,
+  "background_depth_value": 0.0
+}

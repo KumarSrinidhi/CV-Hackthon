@@ -6,6 +6,7 @@
 from typing import Optional
 import numpy as np
 from deep.deep_model import DeepDepthSRModel
+from classical.hole_filling import conservative_hole_filling
 
 # Global model cache to avoid re-initializing weights per sample
 _CACHED_MODEL: Optional[DeepDepthSRModel] = None
@@ -42,7 +43,17 @@ def deep_hr_depth(
     lr_depth = np.asarray(lr_depth, dtype=np.float32)
     hr_rgb = np.asarray(hr_rgb)
 
+    # Inpaint sensor holes if present to prevent 0-value interpolation artifacts
+    if valid_mask is not None:
+        lr_clean, _ = conservative_hole_filling(lr_depth, valid_mask=valid_mask)
+    else:
+        invalid = (~np.isfinite(lr_depth)) | (lr_depth <= 0)
+        if np.any(invalid):
+            lr_clean, _ = conservative_hole_filling(lr_depth, valid_mask=~invalid)
+        else:
+            lr_clean = lr_depth
+
     model = get_deep_model(device=device)
-    pred_depth = model.predict(lr_depth, hr_rgb, scale=scale)
+    pred_depth = model.predict(lr_clean, hr_rgb, scale=scale)
 
     return pred_depth.astype(np.float32)

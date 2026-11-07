@@ -47,7 +47,7 @@ def generate_synthetic_rgbd_scene(
 class RGBDDataset:
     """
     Dataset wrapper for evaluation and benchmarking.
-    Can load real RGB-D images from disk or generate controlled synthetic evaluation sets.
+    Can load real RGB-D images from disk (e.g. depthsr_testset) or generate controlled synthetic evaluation sets.
     """
 
     def __init__(self, data_dir: Optional[str] = None, num_synthetic_samples: int = 10, scale: int = 4):
@@ -55,8 +55,15 @@ class RGBDDataset:
         self.scale = scale
         self.samples: List[Dict[str, np.ndarray]] = []
 
-        if data_dir is not None and os.path.isdir(data_dir):
-            self._load_from_dir(data_dir)
+        # Auto-detect official testset if no directory specified
+        default_testset = os.path.abspath(os.path.join(os.path.dirname(__file__), "depthsr_testset"))
+        if self.data_dir is None and os.path.isdir(default_testset):
+            self.data_dir = default_testset
+
+        if self.data_dir is not None and os.path.isdir(self.data_dir) and self.data_dir != "synthetic":
+            self._load_from_dir(self.data_dir)
+            if len(self.samples) == 0:
+                self._generate_synthetic_set(num_synthetic_samples)
         else:
             self._generate_synthetic_set(num_synthetic_samples)
 
@@ -73,8 +80,43 @@ class RGBDDataset:
             })
 
     def _load_from_dir(self, directory: str):
-        # Scan for paired images and depths
-        pass
+        # 1. Check for sample folders (depthsr_testset convention)
+        subdirs = sorted([
+            os.path.join(directory, d)
+            for d in os.listdir(directory)
+            if os.path.isdir(os.path.join(directory, d))
+        ])
+
+        for sdir in subdirs:
+            rgb_path = os.path.join(sdir, "rgb.png")
+            gt_path = os.path.join(sdir, "depth_hr.npy")
+            lr_depth_path = os.path.join(sdir, f"lr_depth_{self.scale}x.npy")
+            lr_mask_path = os.path.join(sdir, f"lr_mask_{self.scale}x.npy")
+
+            if os.path.exists(rgb_path) and os.path.exists(gt_path):
+                bgr = cv2.imread(rgb_path)
+                if bgr is None:
+                    continue
+                rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+                gt_depth = np.load(gt_path).astype(np.float32)
+
+                if os.path.exists(lr_depth_path):
+                    lr_depth = np.load(lr_depth_path).astype(np.float32)
+                else:
+                    lr_depth, _ = create_lr_depth(gt_depth, scale=self.scale)
+
+                if os.path.exists(lr_mask_path):
+                    valid_mask = np.load(lr_mask_path).astype(np.uint8)
+                else:
+                    valid_mask = (lr_depth > 0).astype(np.uint8)
+
+                self.samples.append({
+                    "id": os.path.basename(sdir),
+                    "rgb": rgb,
+                    "gt_depth": gt_depth,
+                    "lr_depth": lr_depth,
+                    "valid_mask": valid_mask,
+                })
 
     def __len__(self) -> int:
         return len(self.samples)
