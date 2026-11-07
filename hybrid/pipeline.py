@@ -111,7 +111,10 @@ def hybrid_hr_depth(
     if fusion == "v2":
         Wc, Wd, regime = _v2_weights(Dc, Dd, lr_depth, valid_mask)
         Df = fuse(Dc, Dd, Wc, Wd)
-        if use_consistency:
+        # Validation-calibrated (results/hybrid_v2_sweep): consistency anchoring
+        # helps on clean (-1.6%) and holes (-0.9%) but hurts under noise
+        # (+17%: anchoring propagates sensor noise). Skip it there.
+        if use_consistency and regime != "noise":
             Df = enforce_consistency(Df, lr_depth, valid_mask, scale)
         if return_intermediates:
             return Df, {
