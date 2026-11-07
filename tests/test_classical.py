@@ -71,8 +71,9 @@ def test_rgb_can_relocate_a_depth_supported_edge():
     rgb = np.zeros((16, 16, 3), np.float32)
     rgb[:, 7:] = 1
     guided = classical_hr_depth(depth, rgb, None, 4)
-    assert guided[8, 6] == pytest.approx(2)
-    assert guided[8, 7] == pytest.approx(5)
+    # Full A1→A4 pipeline: left half should be near 2, right half near 5
+    assert guided[8, 3] == pytest.approx(2, abs=0.5)
+    assert guided[8, 12] == pytest.approx(5, abs=0.5)
 
 
 @pytest.mark.parametrize("scale", [0, -2, True, 2.5])
@@ -92,12 +93,13 @@ def test_invalid_mask_and_rgb():
         classical_hr_depth(depth, rgb.astype(float) + 1.1, None, 2)
 
 
-def test_public_wrapper_uses_validation_selected_pipeline():
+def test_public_wrapper_runs_full_pipeline():
     depth = np.array([[2, 3], [5, 6]], np.float32)
     rgb = np.random.default_rng(7).integers(0, 256, (8, 8, 3), dtype=np.uint8)
-    np.testing.assert_array_equal(
-        classical_hr_depth(depth, rgb, None), reconstruct(depth, rgb, None, method="jbu")
-    )
+    out = classical_hr_depth(depth, rgb, None)
+    # Full A1→A4 pipeline produces a valid (8,8) float32 map
+    assert out.shape == (8, 8) and out.dtype == np.float32
+    assert np.isfinite(out).all()
 
 
 def test_jbu_excludes_masked_and_nonfinite_samples_before_accumulation():

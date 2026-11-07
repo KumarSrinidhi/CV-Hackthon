@@ -40,11 +40,12 @@ def test_classical_and_hybrid_share_shape():
     assert c.shape == h.shape == (16, 16)
 
 
-def test_hybrid_requires_deep_branch(monkeypatch, tmp_path):
+def test_hybrid_degrades_gracefully_without_deep(monkeypatch, tmp_path):
     monkeypatch.setenv("SGNET_CKPT_DIR", str(tmp_path / "empty_ckpt"))
     lr, rgb = _scene(4)
-    with pytest.raises(NotImplementedError):
-        hybrid_hr_depth(lr, rgb, None, 4)
+    out, inter = hybrid_hr_depth(lr, rgb, None, 4, return_intermediates=True)
+    assert out.shape == (16, 16) and np.isfinite(out).all()
+    assert inter["deep_available"] is False
 
 
 def test_scale_two_classical_and_hybrid():

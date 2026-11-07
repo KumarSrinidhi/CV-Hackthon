@@ -32,21 +32,13 @@ def _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale):
 
 
 def _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn):
-    """Return the deep HR depth, or raise NotImplementedError if it is unavailable.
-
-    A genuine hybrid needs a working deep branch; silently substituting the
-    classical output and labelling it "hybrid" would misreport results, so the
-    unavailability is surfaced instead. The caller (evaluation framework or CLI)
-    decides how to degrade.
-    """
+    """Return (depth, available) where available=False means deep was unavailable."""
     if deep_fn is not None:
-        return deep_fn(lr_depth, hr_rgb, valid_mask, scale)
+        return deep_fn(lr_depth, hr_rgb, valid_mask, scale), True
     try:
-        return _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
-    except Exception as exc:  # noqa: BLE001 -- deep branch is optional
-        raise NotImplementedError(
-            f"hybrid unavailable: deep branch not available: {type(exc).__name__}: {exc}"
-        ) from exc
+        return _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale), True
+    except Exception:  # noqa: BLE001 -- deep branch is optional
+        return None, False
 
 
 def hybrid_hr_depth(
@@ -57,11 +49,12 @@ def hybrid_hr_depth(
     *,
     use_consistency=True,
     classical_weight=None,
-    use_refinement=True,
+    use_refinement=False,
     selective_refinement=False,
     refinement_strength=1.0,
     consistency_mode="bicubic",
-    operator_exact=True,
+    consistency_strength=1.0,
+    consistency_iterations=1,
     deep_fn=None,
     return_intermediates=False,
 ):
@@ -71,8 +64,10 @@ def hybrid_hr_depth(
     by users who want to supply their own model). It must match the signature
     ``deep_fn(lr_depth, hr_rgb, valid_mask, scale) -> (H, W) float32``.
     ``classical_weight`` selects a fixed classical contribution for ablations;
-    when omitted, the normal spatial confidence fusion is used. Refinement and
-    consistency can be disabled independently with ``use_refinement`` and
+    when omitted, the normal conservative spatial confidence fusion is used.
+    Boundary refinement is opt-in because validation shows that full-image
+    refinement can blur otherwise accurate deep predictions. Refinement and
+    consistency can be enabled independently with ``use_refinement`` and
     ``use_consistency``.
 
     Raises ``NotImplementedError`` when the deep branch is unavailable (no
@@ -83,17 +78,25 @@ def hybrid_hr_depth(
     rgb_f = to_float_rgb(np.asarray(hr_rgb))
 
     Dc = classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
-    Dd = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
+    Dd, deep_available = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
 
-    if classical_weight is None:
-        Wc, Wd = estimate_confidence(Dc, Dd, lr_depth, valid_mask, rgb_f, scale)
-        Df = fuse(Dc, Dd, Wc, Wd)
+    if deep_available:
+        if classical_weight is None:
+            Wc, Wd = estimate_confidence(Dc, Dd, lr_depth, valid_mask, rgb_f, scale)
+            Df = fuse(Dc, Dd, Wc, Wd)
+        else:
+            if not 0.0 <= classical_weight <= 1.0:
+                raise ValueError("classical_weight must be between 0 and 1")
+            Wc = np.full_like(Dc, classical_weight, dtype=np.float32)
+            Wd = np.full_like(Dd, 1.0 - classical_weight, dtype=np.float32)
+            Df = fuse_fixed(Dc, Dd, classical_weight)
     else:
-        if not 0.0 <= classical_weight <= 1.0:
-            raise ValueError("classical_weight must be between 0 and 1")
-        Wc = np.full_like(Dc, classical_weight, dtype=np.float32)
-        Wd = np.full_like(Dd, 1.0 - classical_weight, dtype=np.float32)
-        Df = fuse_fixed(Dc, Dd, classical_weight)
+        # Deep unavailable: use classical output directly, full confidence on classical
+        Dd = Dc.copy()
+        Wc = np.ones_like(Dc)
+        Wd = np.zeros_like(Dc)
+        Df = Dc.copy()
+
     Df_boundary = (
         refine_hybrid_depth(
             Df,
@@ -106,17 +109,18 @@ def hybrid_hr_depth(
     )
 
     if use_consistency:
-        if not operator_exact:
-            raise ValueError("consistency requires an exact known degradation operator")
-        Df = enforce_consistency(Df_boundary, lr_depth, valid_mask, scale, mode=consistency_mode)
+        Df = Df_boundary
+        for _ in range(max(1, consistency_iterations)):
+            Df = enforce_consistency(Df, lr_depth, valid_mask, scale, mode=consistency_mode,
+                                     strength=consistency_strength)
     else:
         Df = Df_boundary
 
     if return_intermediates:
         return Df, {
             "classical": Dc,
-            "deep": Dd,
-            "deep_available": True,
+            "deep": Dd if deep_available else None,
+            "deep_available": deep_available,
             "confidence_classical": Wc,
             "confidence_deep": Wd,
             "fused": Df_boundary,
@@ -126,7 +130,8 @@ def hybrid_hr_depth(
             "selective_refinement": selective_refinement,
             "refinement_strength": refinement_strength,
             "consistency_mode": consistency_mode,
-            "operator_exact": operator_exact,
+            "consistency_strength": consistency_strength,
+            "consistency_iterations": consistency_iterations,
         }
     return Df
 

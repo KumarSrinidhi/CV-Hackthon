@@ -82,5 +82,23 @@ def reconstruct(lr_depth, hr_rgb, valid_mask=None, scale=4, method="jbu"):
 
 
 def classical_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4):
-    """Edge-preserving classical depth upsampling (default: joint bilateral upsampling)."""
-    return reconstruct(lr_depth, hr_rgb, valid_mask, scale, method="jbu")
+    """Full classical pipeline: A1 hole-fill → A2 bicubic → A3 JBU → A4 boundary refinement."""
+    depth, rgb = _validate(lr_depth, hr_rgb, valid_mask, scale)
+    rgb_f = to_float_rgb(rgb)
+
+    # A1: validity-aware hole filling
+    from .hole_filling import fill_small_holes, prepare_depth
+    depth_prep, valid = prepare_depth(depth, valid_mask)
+    depth_filled, valid_filled = fill_small_holes(depth_prep, valid)
+
+    # A2: bicubic initial upsampling
+    from .interpolation import interpolate_depth
+    upsampled = interpolate_depth(depth_filled, valid_filled, scale, "bicubic")
+
+    # A3: JBU RGB-guided reconstruction
+    import cv2
+    upsampled_lr = cv2.resize(upsampled, (depth.shape[1], depth.shape[0]), interpolation=cv2.INTER_AREA)
+    jbu_out = joint_bilateral_upsample(upsampled_lr, valid_filled, rgb_f, radius=1)
+
+    # A4: boundary-aware refinement
+    return refine_boundaries(jbu_out, jbu_out, rgb_f)

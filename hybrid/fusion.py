@@ -21,8 +21,14 @@ def fuse(classical_depth, deep_depth, classical_weight, deep_weight):
             f"Shape mismatch: Dc {Dc.shape}, Dd {Dd.shape}, Wc {Wc.shape}, Wd {Wd.shape}"
         )
 
-    # Safety: a non-finite deep value can never contaminate the fusion.
-    Dd = np.where(np.isfinite(Dd), Dd, Dc)
+    # Safety: an invalid branch can never contaminate the fusion. If both are
+    # invalid, preserve the existing numeric contract with a zero output.
+    valid_c = np.isfinite(Dc) & (Dc > 0)
+    valid_d = np.isfinite(Dd) & (Dd > 0)
+    Dd = np.where(valid_d, Dd, Dc)
+    Dc = np.where(valid_c, Dc, Dd)
+    Dc = np.where(np.isfinite(Dc), Dc, 0.0)
+    Dd = np.where(np.isfinite(Dd), Dd, 0.0)
     total = Wc + Wd
     total = np.where(total > 1e-8, total, 1.0)
     fused = (Wc * Dc + Wd * Dd) / total
@@ -35,5 +41,10 @@ def fuse_fixed(classical_depth, deep_depth, alpha=0.5):
     Dd = np.asarray(deep_depth, dtype=np.float32)
     if Dc.shape != Dd.shape:
         raise ValueError(f"classical {Dc.shape} and deep {Dd.shape} shapes differ")
-    Dd = np.where(np.isfinite(Dd), Dd, Dc)
+    valid_c = np.isfinite(Dc) & (Dc > 0)
+    valid_d = np.isfinite(Dd) & (Dd > 0)
+    Dd = np.where(valid_d, Dd, Dc)
+    Dc = np.where(valid_c, Dc, Dd)
+    Dc = np.where(np.isfinite(Dc), Dc, 0.0)
+    Dd = np.where(np.isfinite(Dd), Dd, 0.0)
     return (alpha * Dc + (1.0 - alpha) * Dd).astype(np.float32)

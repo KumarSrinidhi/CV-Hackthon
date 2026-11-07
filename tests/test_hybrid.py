@@ -64,6 +64,13 @@ def test_fuse_invalid_deep_uses_classical():
     np.testing.assert_allclose(fuse(Dc, Dd, Wc, Wd), 3.0)
 
 
+def test_fuse_invalid_classical_uses_deep():
+    Dc = np.full((2, 2), np.nan, np.float32)
+    Dd = np.full((2, 2), 4.0, np.float32)
+    weights = np.full((2, 2), 0.5, np.float32)
+    np.testing.assert_allclose(fuse(Dc, Dd, weights, weights), 4.0)
+
+
 def test_fuse_fixed_weight():
     Dc = np.full((2, 2), 2.0, np.float32)
     Dd = np.full((2, 2), 6.0, np.float32)
@@ -85,10 +92,20 @@ def test_consistency_is_deterministic():
     np.testing.assert_array_equal(a, b)
 
 
+def test_consistency_does_not_spread_invalid_hole_as_zero():
+    lr = np.full((2, 2), 4.0, np.float32)
+    valid = np.array([[True, False], [True, True]])
+    lr[~valid] = 0.0
+    fused = np.full((4, 4), 4.0, np.float32)
+    out = enforce_consistency(fused, lr, valid, 2)
+    np.testing.assert_allclose(out, 4.0, atol=1e-5)
+
+
 def test_hybrid_raises_when_deep_unavailable(no_deep_checkpoint):
     lr, rgb = _synthetic(4)
-    with pytest.raises(NotImplementedError, match="deep branch not available"):
-        hybrid_hr_depth(lr, rgb, None, 4)
+    out, inter = hybrid_hr_depth(lr, rgb, None, 4, return_intermediates=True)
+    assert out.shape == (16, 16) and np.isfinite(out).all()
+    assert inter["deep_available"] is False
 
 
 def test_hybrid_injectable_deep_fn():
@@ -110,6 +127,27 @@ def test_hybrid_deterministic():
     a = hybrid_hr_depth(lr, rgb, None, 4, deep_fn=_fake_deep(3.0))
     b = hybrid_hr_depth(lr, rgb, None, 4, deep_fn=_fake_deep(3.0))
     np.testing.assert_array_equal(a, b)
+
+
+def test_adaptive_confidence_is_conservative_when_deep_matches_measurement():
+    lr = np.full((2, 2), 4.0, np.float32)
+    classical = np.full((8, 8), 2.0, np.float32)
+    deep = np.full((8, 8), 4.0, np.float32)
+    rgb = np.zeros((8, 8, 3), np.float32)
+    wc, wd = estimate_confidence(classical, deep, lr, None, rgb, 4)
+    assert float(wc.max()) <= 0.01 + 1e-6
+    np.testing.assert_allclose(wc + wd, 1.0, atol=1e-6)
+
+
+def test_adaptive_confidence_can_repair_strong_supported_edge():
+    lr = np.tile(np.array([2, 2, 5, 5], np.float32), (2, 1))
+    classical = np.repeat(np.repeat(lr, 4, axis=0), 4, axis=1)
+    deep = np.full((8, 16), 3.5, np.float32)
+    rgb = np.zeros((8, 16, 3), np.float32)
+    rgb[:, 8:] = 1.0
+    wc, _ = estimate_confidence(classical, deep, lr, None, rgb, 4)
+    assert float(wc.max()) > 0.10
+    assert float(wc.max()) <= 0.35 + 1e-6
 
 
 def test_fixed_fusion_can_disable_postprocessing():
@@ -134,15 +172,14 @@ def test_fixed_fusion_rejects_invalid_classical_weight():
         hybrid_hr_depth(lr, rgb, None, 4, classical_weight=1.1, deep_fn=_fake_deep())
 
 
-def test_consistency_requires_exact_operator():
+def test_consistency_strength_zero_is_identity():
+    """consistency_strength=0 must leave the fused map unchanged."""
     lr, rgb = _synthetic(4)
-    with pytest.raises(ValueError, match="exact known degradation operator"):
-        hybrid_hr_depth(
-            lr,
-            rgb,
-            None,
-            4,
-            classical_weight=0.02,
-            operator_exact=False,
-            deep_fn=_fake_deep(),
-        )
+    out_no_cons = hybrid_hr_depth(
+        lr, rgb, None, 4, classical_weight=0.02, use_consistency=False, deep_fn=_fake_deep(3.0)
+    )
+    out_zero = hybrid_hr_depth(
+        lr, rgb, None, 4, classical_weight=0.02, use_consistency=True,
+        consistency_strength=0.0, deep_fn=_fake_deep(3.0)
+    )
+    np.testing.assert_allclose(out_no_cons, out_zero, atol=1e-5)

@@ -1,26 +1,15 @@
-"""Pixel-wise branch confidence estimation.
+"""Conservative, measurement-aware branch confidence estimation.
 
-The returned weights are **normalized confidence scores** (``W_c + W_d == 1``), not
-calibrated probabilities. They rank the two branches per pixel using three pieces of
-evidence:
-
-1. **Structure** -- normalized depth-gradient magnitude of the classical output. The
-   classical branch (edge-aware JBU) is preferred where there is structure/edges.
-2. **Measurement proximity** -- distance to the nearest original valid LR pixel. The
-   classical branch is preferred near measurements (it preserves them); the deep
-   branch is preferred far from measurements (it supplies a learned prior).
-3. **RGB/depth edge agreement** -- where an RGB edge agrees with a depth
-   discontinuity, the classical branch (which explicitly preserves boundaries) is
-   preferred.
-
-All evidence is in [0, 1] and combined with a fixed convex combination.
+The deep branch is the primary estimator because validation shows that the
+classical branch is substantially less accurate on flat regions. The classical
+branch receives a small default contribution and is allowed to contribute more
+only where it has boundary support and explains the measured LR depth better.
 """
 
 from __future__ import annotations
 
 import cv2
 import numpy as np
-from scipy import ndimage as ndi
 
 from classical.adaptive_jbu import edge_evidence
 
@@ -46,6 +35,21 @@ def _normalize01(x):
     return x if mx <= 1e-12 else (x / mx).astype(np.float32)
 
 
+def _measurement_advantage(classical, deep, lr_depth, valid_mask):
+    """Return where classical better matches the available LR measurements."""
+    h, w = lr_depth.shape
+    classical_safe = np.where(np.isfinite(classical), classical, 0.0)
+    deep_safe = np.where(np.isfinite(deep), deep, 0.0)
+    classical_lr = cv2.resize(classical_safe, (w, h), interpolation=cv2.INTER_AREA)
+    deep_lr = cv2.resize(deep_safe, (w, h), interpolation=cv2.INTER_AREA)
+    valid = _resolve_valid(lr_depth, valid_mask)
+    err_c = np.abs(classical_lr - lr_depth)
+    err_d = np.abs(deep_lr - lr_depth)
+    advantage = (err_d - err_c) / (err_d + err_c + 1e-6)
+    advantage = np.where(np.isfinite(advantage), advantage, 0.0)
+    return np.where(valid, np.clip(advantage, 0.0, 1.0), 0.0).astype(np.float32)
+
+
 def estimate_confidence(
     classical_depth,
     deep_depth,
@@ -66,14 +70,14 @@ def estimate_confidence(
     gy = cv2.Sobel(Dc, cv2.CV_32F, 0, 1, ksize=3)
     edge_score = _normalize01(cv2.magnitude(gx, gy))
 
-    # 2. measurement proximity: 0 at a valid LR pixel, 1 far away.
+    # 2. Compare branch residuals at the available LR measurements. This is
+    # safer than assigning a large weight merely because a pixel is nearby.
     valid = _resolve_valid(lr_depth, valid_mask)
     if valid.any():
-        dist = ndi.distance_transform_edt(~valid)
-        dist_hr = cv2.resize(dist.astype(np.float32), (W, H), interpolation=cv2.INTER_LINEAR)
-        dist_score = _normalize01(dist_hr)
+        advantage_lr = _measurement_advantage(Dc, Dd, lr_depth, valid_mask)
+        advantage = cv2.resize(advantage_lr, (W, H), interpolation=cv2.INTER_LINEAR)
     else:
-        dist_score = np.ones((H, W), np.float32)
+        advantage = np.zeros((H, W), np.float32)
 
     # 3. RGB/depth edge agreement (0 when rgb is unavailable).
     agreement = np.zeros((H, W), np.float32)
@@ -84,16 +88,20 @@ def estimate_confidence(
         except Exception:
             agreement = np.zeros((H, W), np.float32)
 
-    # Convex combination; classical is trusted on structure, near measurements, and
-    # on agreed edges. Deep is trusted on flat, measurement-poor regions.
-    wc = 0.4 * edge_score + 0.3 * (1.0 - dist_score) + 0.3 * agreement
-    wc = np.clip(wc, 0.0, 1.0).astype(np.float32)
-    wd = (1.0 - wc).astype(np.float32)
+    # Keep deep dominant by default. Extra classical weight requires both boundary
+    # support and a meaningful measurement advantage. Strongly supported boundaries
+    # may use a larger contribution so a blurred deep edge can actually be repaired.
+    boundary_support = 0.35 * edge_score + 0.65 * agreement
+    advantage_gate = np.clip((advantage - 0.15) / 0.85, 0.0, 1.0)
+    wc = 0.01 + 0.34 * boundary_support * advantage_gate
+    wc = np.clip(wc, 0.0, 0.35).astype(np.float32)
 
     # A branch with invalid/absent output must never be trusted there.
+    invalid_classical = ~np.isfinite(Dc) | (Dc <= 0)
     invalid_deep = ~np.isfinite(Dd) | (Dd <= 0)
+    wc[invalid_classical] = 0.0
     wc[invalid_deep] = 1.0
-    wd[invalid_deep] = 0.0
+    wd = (1.0 - wc).astype(np.float32)
 
     # Enforce the normalization invariant exactly.
     total = wc + wd
