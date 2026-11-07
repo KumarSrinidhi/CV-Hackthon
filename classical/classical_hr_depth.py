@@ -3,9 +3,8 @@
     classical_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4) -> (H, W) float32
     reconstruct(lr_depth, hr_rgb, valid_mask=None, scale=4, method="jbu") -> (H, W) float32
 
-The classical branch never modifies the caller's arrays. Measured depth values are
-preserved; invalid pixels (<= 0, NaN, Inf, or flagged in ``valid_mask``) are handled
-separately and are never treated as real measurements.
+The classical branch never modifies the caller's arrays. Invalid pixels
+(<= 0, NaN, Inf, or flagged in ``valid_mask``) are excluded as measurements.
 """
 
 from __future__ import annotations
@@ -14,7 +13,9 @@ import cv2
 import numpy as np
 
 from .boundary_refinement import refine_boundaries
+from .edge_upsampling import upsample_dense_depth, upsample_masked_depth
 from .guided_filter import guided_filter
+from .hole_filling import prepare_depth
 from .interpolation import interpolate_depth
 from .jbu import joint_bilateral_upsample, to_float_rgb
 
@@ -45,7 +46,8 @@ def _validate(lr_depth, hr_rgb, valid_mask, scale):
             raise ValueError(
                 f"valid_mask shape {mask.shape} must match LR depth shape {depth.shape}."
             )
-    return depth, rgb
+        valid_mask = mask
+    return depth, rgb, valid_mask
 
 
 def reconstruct(lr_depth, hr_rgb, valid_mask=None, scale=4, method="jbu"):
@@ -54,7 +56,7 @@ def reconstruct(lr_depth, hr_rgb, valid_mask=None, scale=4, method="jbu"):
     Supported methods: nearest, bilinear, bicubic, jbu, guided, classical,
     adaptive_jbu, refined_jbu.
     """
-    depth, rgb = _validate(lr_depth, hr_rgb, valid_mask, scale)
+    depth, rgb, valid_mask = _validate(lr_depth, hr_rgb, valid_mask, scale)
     rgb_f = to_float_rgb(rgb)
 
     if method in _INTERPOLATION_METHODS:
@@ -75,12 +77,16 @@ def reconstruct(lr_depth, hr_rgb, valid_mask=None, scale=4, method="jbu"):
         return out
 
     if method == "classical":
-        out = joint_bilateral_upsample(depth, valid_mask, rgb_f, radius=1)
-        return refine_boundaries(out, out, rgb_f)
+        depth, valid = prepare_depth(depth, valid_mask)
+        if scale == 1:
+            return depth
+        if valid.all():
+            return upsample_dense_depth(depth, rgb_f, scale)
+        return upsample_masked_depth(depth, valid, rgb_f, scale)
 
     raise ValueError(f"Unknown reconstruction method: {method!r}.")
 
 
 def classical_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4):
-    """Edge-preserving classical depth upsampling (default: joint bilateral upsampling)."""
-    return reconstruct(lr_depth, hr_rgb, valid_mask, scale, method="jbu")
+    """Edge-preserving classical depth upsampling."""
+    return reconstruct(lr_depth, hr_rgb, valid_mask, scale, method="classical")

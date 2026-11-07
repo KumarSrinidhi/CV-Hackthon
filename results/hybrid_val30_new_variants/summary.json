@@ -1,0 +1,19 @@
+{
+  "dataset": "nyu",
+  "split": "val",
+  "samples": 30,
+  "scale": 4,
+  "condition": "clean bicubic",
+  "device": "NVIDIA GeForce RTX 5050 Laptop GPU",
+  "selected_by": "validation RMSE",
+  "selected": "fixed_0.02",
+  "results": {
+    "classical": {"rmse": 0.0599, "mae": 0.0199, "psnr": 45.49, "ssim": 0.9882, "boundary_rmse": 0.2764, "edge_f1": 0.754, "latency_ms": 542.0},
+    "deep": {"rmse": 0.0123, "mae": 0.0036, "psnr": 59.57, "ssim": 0.9994, "boundary_rmse": 0.0537, "edge_f1": 0.976, "latency_ms": 1992.9},
+    "fixed_0.01": {"rmse": 0.0123, "mae": 0.0036, "psnr": 59.58, "ssim": 0.9994, "boundary_rmse": 0.0537, "edge_f1": 0.976, "latency_ms": 2130.4},
+    "fixed_0.02": {"rmse": 0.0123, "mae": 0.0036, "psnr": 59.58, "ssim": 0.9994, "boundary_rmse": 0.0537, "edge_f1": 0.975, "latency_ms": 2133.8},
+    "adaptive_fusion": {"rmse": 0.0124, "mae": 0.0037, "psnr": 59.52, "ssim": 0.9994, "boundary_rmse": 0.0541, "edge_f1": 0.974, "latency_ms": 2148.1},
+    "adaptive_fusion_boundary": {"rmse": 0.0141, "mae": 0.0046, "psnr": 58.17, "ssim": 0.9991, "boundary_rmse": 0.0608, "edge_f1": 0.964, "latency_ms": 2238.3}
+  },
+  "note": "Rounded aggregate results; rerun evaluator for per-image CSV and bootstrap details."
+}

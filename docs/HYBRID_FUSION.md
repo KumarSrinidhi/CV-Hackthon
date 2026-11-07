@@ -1,64 +1,39 @@
 # Hybrid Fusion
 
-The hybrid is a **genuine** fusion of two HR reconstructions — it is not a
-side-by-side display and not a global fixed blend.
+The hybrid combines two HR reconstructions with fixed or spatially gated weights.
+Weights are normalized scores, not calibrated probabilities.
 
 ## Confidence estimation
 
-For each pixel, two normalized confidence scores `W_c` (classical) and `W_d`
-(deep) are estimated with `W_c + W_d == 1`. They are **normalized confidence
-scores, not calibrated probabilities**. Three evidence terms (each in `[0, 1]`)
-are combined with a fixed convex combination:
-
-```
-edge_score   = normalized Sobel magnitude of D_c          (structure)
-dist_score   = normalized distance to nearest valid LR px (measurement proximity)
-agreement    = RGB edge ∩ depth-discontinuity band        (edge agreement)
-
-W_c_raw = 0.4 * edge_score + 0.3 * (1 - dist_score) + 0.3 * agreement
-W_d_raw = 1 - W_c_raw
-```
-
-Intuition:
-- The classical branch (edge-aware JBU) is trusted **on structure/edges**, **near
-  valid measurements**, and **where RGB and depth edges agree**.
-- The deep branch (learned prior) is trusted **on flat regions** and **far from
-  measurements** (where it supplies a prior).
-
-Invalid deep pixels (`NaN`/`Inf`/`<= 0`) force `W_d = 0`, `W_c = 1`, so a bad
-branch never corrupts the other.
-
-## Adaptive fusion
-
-```
-D_f = W_c * D_c + W_d * D_d,   W_c + W_d == 1
-```
-
-The weights are **spatial** (per pixel), not one global scalar. `fuse_fixed` is a
-fixed-weight ablation baseline.
+Adaptive weighting is conservative and capped by `max_classical_weight` (default
+`0.1`). Classical weight requires RGB/depth edge agreement, then uses valid
+measurement support and the residual under the forward operator as modulators.
+These signals are heuristics, not proof of higher HR accuracy. `adaptive=False`
+disables the gate and gives the deep branch zero-alpha behavior. Invalid deep
+pixels still force classical fallback for safety.
 
 ## Boundary refinement
 
-`D_f` is refined using depth discontinuities as primary evidence and RGB structure
-as supporting evidence (reusing `classical.boundary_refinement.refine_boundaries`).
-This preserves foreground/background boundaries and prevents RGB texture from being
-copied into depth.
+Boundary refinement uses depth discontinuities as primary evidence and RGB as
+support. It is retained for ablation, but is disabled by default because full or
+selective refinement can worsen validation RMSE.
 
 ## Measurement consistency
 
-When the forward degradation operator `S` is known (bicubic downsampling used to
-build the synthetic LR measurements):
+When the forward degradation operator `S` is known:
 
 ```
 r_LR = D_LR - S(D_f)          # at valid LR pixels only
-D_f' = D_f + upsample(r_LR)   # nearest (block-constant) upsample
+D_f' = D_f + strength * upsample(r_LR)
 ```
 
-For unknown real sensor formation processes this exact residual is **not** claimed;
-it is applied only under the known synthetic protocol.
+`strength` and `iterations` are configurable. Residual upsampling is an
+implementation approximation rather than an exact projection. Invalid LR pixels
+are ignored on every iteration; noisy inputs should use a damped strength or the
+uncorrected baseline.
 
 ## Ablations
 
-`hybrid/ablations()` returns: `classical`, `deep`, `fixed_fusion`,
-`confidence_fusion`, `confidence_boundary`, and `final` (confidence + boundary +
-measurement consistency).
+`hybrid/ablations()` returns classical, deep, DL+consistency, fixed fusion,
+fixed fusion+consistency, adaptive fusion, adaptive fusion+consistency, and the
+boundary-refined final ablation.
