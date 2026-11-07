@@ -51,6 +51,9 @@ For Hugging Face Spaces use the Gradio SDK with `app.py` containing
 `from app.ui import build_app; demo = build_app(); demo.launch()`. Without the checkpoint the app
 still runs and shows classical results, labelled as a fallback.
 
+For AWS App Runner use the `Dockerfile` (listens on `0.0.0.0:$PORT`, default 8080) — see the
+"Deploy to AWS App Runner" section in the top-level `README.md`.
+
 ## Not verified here
 
 The Gradio layout was not launched (no gradio in the build environment) and local deep/hybrid

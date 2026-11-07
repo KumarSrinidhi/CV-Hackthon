@@ -123,6 +123,45 @@ Teammate-produced deep/eval results are preserved under `results/`.
 Datasets and checkpoints are **not** committed (see `.gitignore`); they must be
 placed under `datasets/` and `checkpoints/` respectively.
 
+## Deploy to AWS App Runner
+
+The repo ships a `Dockerfile` (+ `.dockerignore`, `requirements.web.txt`): Gradio binds to
+`0.0.0.0:$PORT` (default **8080**), so the App Runner port needs no override.
+
+```bash
+# 1. Build and push to ECR
+aws ecr create-repository --repository-name p4-depth-app
+docker build -t p4-depth-app .
+docker tag p4-depth-app:latest <account>.dkr.ecr.<region>.amazonaws.com/p4-depth-app:latest
+aws ecr get-login-password --region <region> \
+  | docker login --username AWS --password-stdin <account>.dkr.ecr.<region>.amazonaws.com
+docker push <account>.dkr.ecr.<region>.amazonaws.com/p4-depth-app:latest
+
+# 2. Create the service (an ECR access role is required; the console walks you through it,
+#    or pass --source-configuration with the ECR image URI + AccessRoleArn)
+aws apprunner create-service --service-name p4-depth-app \
+  --source-configuration '{
+    "ImageRepository": {
+      "ImageIdentifier": "<account>.dkr.ecr.<region>.amazonaws.com/p4-depth-app:latest",
+      "ImageRepositoryType": "ECR",
+      "ImageConfiguration": {"Port": "8080"}
+    },
+    "AuthenticationConfiguration": {"AccessRoleArn": "<ecr-access-role-arn>"},
+    "AutoDeploymentsEnabled": false
+  }'
+```
+
+Notes:
+
+- Health check default (`GET /`) works as-is; first boot takes ~20-30 s (Gradio import).
+- Start at **2 vCPU / 4 GB** — image processing is CPU-bound.
+- The image intentionally ships **without torch / SGNet checkpoints** (both gitignored), so the
+  hybrid pipeline runs its classical fallback (`deep_available=False`). To enable the deep
+  branch, add a CPU `torch` wheel to `requirements.web.txt`, copy `checkpoints/sgnet/*.pth`
+  into the image, and set `SGNET_CKPT_DIR`.
+- App Runner source-from-GitHub also works (it builds this `Dockerfile`); it just needs an ECR
+  repo + connection configured in the console.
+
 ## Limitations
 
 - The deep branch was **not run on this machine** (CPU-only, no SGNet checkpoint,
