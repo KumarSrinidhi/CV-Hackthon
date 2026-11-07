@@ -103,9 +103,44 @@ Runs all 14 unit tests across classical, deep, hybrid, evaluation, and applicati
 pytest tests/
 ```
 
+### Launch Interactive Web Studio
+Launch the Gradio 6 web interface locally:
+```bash
+python3 app.py
+```
+Open [http://localhost:7860](http://localhost:7860) to interact with:
+- Interactive Before / After Image Slider (`gr.ImageSlider`)
+- Real-time 3D WebGL Surface Mesh & Point Cloud Viewer (`gr.Model3D`)
+- 1D Horizontal Scanline Step-Profile Inspector across RGB edge transitions
+- Pre-packaged NYU-Depth-v2 presets and custom RGB-D uploads
+- Multi-format 3D mesh and point cloud downloads (`.OBJ`, `.PLY`, `.NPY`)
+
 ---
 
-## 4. Benchmark Findings & Ablation Analysis
+## 4. Deployment Instructions
+
+### Deploying to Hugging Face Spaces (Gradio Studio)
+The repository is formatted with Hugging Face YAML metadata in `README.md`.
+1. Create a new Space on [Hugging Face Spaces](https://huggingface.co/spaces) selecting the **Gradio** SDK.
+2. Add the remote and push:
+```bash
+git remote add hf https://huggingface.co/spaces/<your-username>/<your-space-name>
+git push hf kumarbro:main --force
+```
+
+### Deploying to Vercel (Edge Showcase)
+The repository includes a static edge dashboard in `public/` managed via `vercel.json`:
+1. Connect your GitHub repository to [Vercel](https://vercel.com).
+2. Select the repository `RJsr-08/wfeqwfdwe` (or `KumarSrinidhi/CV-Hackthon`).
+3. Deploy! Vercel automatically detects `vercel.json` and serves `public/index.html` with zero build configuration.
+Alternatively, deploy directly using the Vercel CLI:
+```bash
+npx vercel --prod
+```
+
+---
+
+## 5. Benchmark Findings & Ablation Analysis
 
 Validation on the NYU-v2 test set indicates:
 1. **Hybrid Consistency Gain**: Damped measurement consistency enforcement ($D_f + \gamma \cdot S^\dagger(r_{LR})$) improves RMSE and PSNR over standalone deep learning by anchoring reconstructions to physically verified sensor measurements.
