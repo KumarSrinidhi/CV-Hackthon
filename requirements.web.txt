@@ -1,0 +1,9 @@
+# Runtime deps for the web app / Docker image (no torch, no datasets).
+numpy
+opencv-python-headless
+scipy
+scikit-image
+pillow
+tqdm
+pyyaml
+gradio
