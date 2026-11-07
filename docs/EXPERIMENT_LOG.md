@@ -286,3 +286,40 @@ E4b best.pth SHA256: `8413deabbf4e81b9…`
 **Decision: KEEP.** E8 = original-clean quality + E7-robustness with LR-only detection; no regime was misrouted (clean outputs bit-identical). Acceptance target on clean is preserved (0.0101/0.960 on the historical 100-subset protocol) while degraded regimes improve 24–60%.
 
 **Artifacts:** `deep/adaptive.py`, `scripts/eval_adaptive.py`, `results/e8_hf_clean100/`, `results/e8_val150_{clean,holes,noise,noise_strong}/`.
+
+---
+
+## P4-A6 - Skip the classical branch when its v2 weight is 0 (latency)
+
+- **Date/time:** 2026-11-07 ~11:30 local
+- **Research question:** Can hybrid latency drop without touching quality? In v2 fusion the classical weight is 0 outside the holes regime, yet the branch was still computed (~300 ms of ~2150 ms).
+- **Hypothesis:** Skipping the classical call in clean/noise regimes leaves outputs identical (weights are exactly 0 there) and cuts latency.
+- **Change:** `hybrid/pipeline.py`: regime is detected before the classical call; in v2 fusion the classical branch runs only in the holes regime (`skip_classical=None` default auto-skips; `False` forces it). Where the deep output is invalid and classical was skipped, a bicubic upsample of the nearest-filled LR fills in (previously: the classical output).
+- **Tests:** `tests/test_adaptive.py::test_v2_skips_classical_outside_holes`, `test_v2_still_calls_classical_in_holes`, `test_bicubic_fallback_fills_invalid_deep` (hermetic, no GPU).
+- **Metrics:** quality unchanged in clean/noise by construction (wc=0); holes path unchanged (classical still runs). Latency: classical stage ~300 ms/sample (measured, val150) removed from clean/noise inference, i.e. hybrid latency ~2189 -> ~1890 ms expected (matches deep_adaptive).
+- **Decision: KEEP** (default on; public interface unchanged; legacy fusion path unaffected).
+
+---
+
+## P4-B1 - Classical branch repair: stage-isolation diagnosis + sharpening-gain blend
+
+- **Date/time:** 2026-11-07 ~11:25-12:10 local
+- **Research question:** The classical branch (0.0584) is worse than bicubic (0.0367) on the HF clean100 benchmark - which stage hurts, and can it be repaired without retraining?
+- **Method (stage isolation, val150 clean x4, n=150, border 6):** plain bicubic+back-projection (`smooth_only`) vs the full dense pipeline (`classical`). smooth_only RMSE 0.0270 beats classical 0.0294 and bicubic 0.0292 -> the transition-sharpening stage (0.95 gain) is the regression; it buys edge F1 (0.819 vs 0.319) at an RMSE cost.
+- **Intervention:** blend `out = (1-g)*smooth + g*dense`, sweep g. Implemented as `classical/edge_upsampling.py::upsample_blend_depth` + `reconstruct(method='classical_blend')`.
+- **Config:** g in {0.2,0.3,0.4,0.5,0.6}; BP iters 8, gain 1.1; seed 0; unit m.
+- **Results (val150 clean):**
+
+| variant | RMSE | MAE | bnd RMSE | edge F1 |
+|---|---|---|---|---|
+| blend g=0.4 | **0.02504** | 0.00866 | 0.1278 | 0.625 |
+| blend g=0.5 | 0.02517 | 0.00856 | 0.1293 | 0.686 |
+| blend g=0.3 | 0.02516 | 0.00879 | 0.1278 | 0.554 |
+| smooth_only | 0.02700 | 0.00938 | 0.1362 | 0.319 |
+| bicubic | 0.02918 | 0.00980 | 0.1521 | 0.211 |
+| classical (old) | 0.02935 | 0.00868 | 0.1558 | 0.819 |
+
+- **Significance (paired bootstrap, 5000 resamples, val150):** blend_g0.4 - bicubic mean -0.00415, 95% CI [-0.00455, -0.00376] (significant); blend_g0.4 - classical mean -0.00196, CI [-0.00228, -0.00166] (significant).
+- **Report-only verification, HF NYU clean100 x4:** classical_blend_g0.4 RMSE **0.0315** vs bicubic 0.0367 and old classical 0.0376 -> target 'classical < bicubic' met (scripts/task_b_hf_benchmark.py, results/task_b_hf_clean100/).
+- **Rejected along the way:** MAD outlier rejection on clean LR (val15: 0.0567, rejects genuine depth edges; only plausible under noise), progressive 2x JBU (val15: 0.0552 vs 0.0349 classical; RGB gate too sparse), WLS sparse solve (val15: 0.0511-0.0624 for lambda in {0.1,0.4,1.0}; over-smooths even with capped pair weights).
+- **Decision: KEEP.** Hybrid v2 holes path now calls `classical_blend_hr_depth` (method='classical_blend'); the standalone `classical_hr_depth` public contract is unchanged. Holes-weight revalidation scheduled (P4-B2).

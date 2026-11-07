@@ -20,6 +20,7 @@ from __future__ import annotations
 import numpy as np
 
 from classical import classical_hr_depth
+from classical.classical_hr_depth import reconstruct as classical_reconstruct
 from classical.jbu import to_float_rgb
 
 from .boundary_refinement import refine_hybrid_depth
@@ -31,6 +32,12 @@ from data.degradation import forward_operator
 # Validation-calibrated classical weight in the holes regime (P3-E8b sweep):
 # 0.05 beats deep-only under holes; on clean/noise any classical weight hurts.
 HOLES_CLASSICAL_WEIGHT = 0.05
+
+
+def classical_blend_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4):
+    """Classical branch as used by the v2 hybrid: the validation-calibrated blend
+    (results/task_b: RMSE 0.0250 vs bicubic 0.0292 on val150 clean)."""
+    return classical_reconstruct(lr_depth, hr_rgb, valid_mask, scale, method="classical_blend")
 
 
 def _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale):
@@ -147,7 +154,7 @@ def hybrid_hr_depth(
         regime0 = detect_regime(np.asarray(lr_depth, dtype=np.float32), valid_mask)
         compute_classical = (regime0 == "holes") if skip_classical is None else not skip_classical
         Dc = (
-            classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
+            classical_blend_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
             if compute_classical
             else _bicubic_fallback(lr_depth, valid_mask, scale)
         )

@@ -4,6 +4,10 @@ import cv2
 import numpy as np
 from PIL import Image
 
+from .hole_filling import prepare_depth
+from .jbu import to_float_rgb
+from data.preprocessing import fill_invalid_nearest
+
 
 def _pixel_centers(length, output_length, scale):
     coordinates = (np.arange(output_length, dtype=np.float32) + 0.5) / scale - 0.5
@@ -118,3 +122,38 @@ def upsample_masked_depth(depth, measured, rgb, scale):
     support = cv2.resize(nearby | enclosed, result.shape[::-1], interpolation=cv2.INTER_NEAREST)
     result[support == 0] = 0
     return result
+
+
+def _backproject_bicubic(depth, scale, iters=8, gain=1.1):
+    """Plain bicubic upsample with iterative back-projection to the LR measurements."""
+    h, w = depth.shape
+    H, W = h * scale, w * scale
+    out = cv2.resize(depth, (W, H), interpolation=cv2.INTER_CUBIC)
+    lo, hi = float(depth.min()), float(depth.max())
+    for _ in range(iters):
+        projected = np.asarray(Image.fromarray(out).resize((w, h), Image.Resampling.BICUBIC))
+        residual = depth - projected
+        residual_hr = np.asarray(
+            Image.fromarray(residual).resize((W, H), Image.Resampling.BICUBIC), np.float32)
+        out = np.clip(out + gain * residual_hr, lo, hi)
+    return out
+
+
+def upsample_blend_depth(lr_depth, valid_mask, rgb, scale, gain=0.4):
+    """Blend of the plain back-projected bicubic and the sharpened dense path.
+
+    Validation-calibrated (results/task_b, val150 clean): the full 0.95 transition
+    sharpening gain trades RMSE for edge F1; blending 40% of it into the smooth
+    back-projection beats bicubic on RMSE while keeping part of the edge F1.
+    gain=0 reproduces the smooth path, gain=1 the dense path.
+    """
+    depth, valid = prepare_depth(lr_depth, valid_mask)
+    if not valid.any():
+        return np.zeros(rgb.shape[:2], dtype=np.float32)
+    filled = depth if valid.all() else fill_invalid_nearest(depth, valid)
+    rgb_f = to_float_rgb(rgb)
+    smooth = _backproject_bicubic(filled, scale)
+    if gain <= 0.0:
+        return smooth.astype(np.float32)
+    dense = upsample_dense_depth(filled, rgb_f, scale)
+    return ((1.0 - gain) * smooth + gain * dense).astype(np.float32)

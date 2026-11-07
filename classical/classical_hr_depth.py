@@ -54,7 +54,7 @@ def reconstruct(lr_depth, hr_rgb, valid_mask=None, scale=4, method="jbu"):
     """Route to a classical reconstruction method.
 
     Supported methods: nearest, bilinear, bicubic, jbu, guided, classical,
-    adaptive_jbu, refined_jbu.
+    classical_blend, adaptive_jbu, refined_jbu.
     """
     depth, rgb, valid_mask = _validate(lr_depth, hr_rgb, valid_mask, scale)
     rgb_f = to_float_rgb(rgb)
@@ -83,6 +83,13 @@ def reconstruct(lr_depth, hr_rgb, valid_mask=None, scale=4, method="jbu"):
         if valid.all():
             return upsample_dense_depth(depth, rgb_f, scale)
         return upsample_masked_depth(depth, valid, rgb_f, scale)
+
+    if method == "classical_blend":
+        if scale == 1:
+            d, _ = prepare_depth(depth, valid_mask)
+            return d
+        from .edge_upsampling import upsample_blend_depth
+        return upsample_blend_depth(depth, valid_mask, rgb_f, scale)
 
     raise ValueError(f"Unknown reconstruction method: {method!r}.")
 

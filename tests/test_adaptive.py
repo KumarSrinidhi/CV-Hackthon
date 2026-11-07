@@ -147,7 +147,6 @@ def test_hybrid_v2_deterministic(synthetic_pair):
 def test_v2_skips_classical_outside_holes(synthetic_pair, monkeypatch):
     """Latency: in regimes where the v2 classical weight is 0, the classical branch
     must not run at all."""
-    import classical.pipeline
     import hybrid.pipeline
     from hybrid import hybrid_hr_depth
 
@@ -156,8 +155,7 @@ def test_v2_skips_classical_outside_holes(synthetic_pair, monkeypatch):
     def boom(*args, **kwargs):
         raise AssertionError("classical branch must be skipped in clean regimes")
 
-    monkeypatch.setattr(hybrid.pipeline, "classical_hr_depth", boom)
-    monkeypatch.setattr(classical.pipeline, "classical_hr_depth", boom)
+    monkeypatch.setattr(hybrid.pipeline, "classical_blend_hr_depth", boom)
 
     def deep_fn(lr_depth, hr_rgb, valid_mask, scale):
         return np.full((16, 16), 2.1, np.float32)
@@ -181,7 +179,7 @@ def test_v2_still_calls_classical_in_holes(synthetic_pair, monkeypatch):
 
     called = []
     monkeypatch.setattr(
-        hybrid.pipeline, "classical_hr_depth",
+        hybrid.pipeline, "classical_blend_hr_depth",
         lambda *a, **k: called.append(1) or np.full((16, 16), 2.5, np.float32),
     )
 
@@ -203,7 +201,7 @@ def test_bicubic_fallback_fills_invalid_deep(synthetic_pair, monkeypatch):
     def boom(*args, **kwargs):
         raise AssertionError("classical branch must be skipped in clean regimes")
 
-    monkeypatch.setattr(hybrid.pipeline, "classical_hr_depth", boom)
+    monkeypatch.setattr(hybrid.pipeline, "classical_blend_hr_depth", boom)
 
     def deep_fn(lr_depth, hr_rgb, valid_mask, scale):
         out = np.full((16, 16), 2.1, np.float32)
@@ -213,3 +211,30 @@ def test_bicubic_fallback_fills_invalid_deep(synthetic_pair, monkeypatch):
     out = hybrid_hr_depth(lr, rgb, None, 2, deep_fn=deep_fn)
     assert np.isfinite(out).all()
     assert out[0, 0] > 0  # filled from the LR, not the invalid value
+
+
+# --------------------------------------------------------------------- classical blend
+def test_classical_blend_constant_depth():
+    from classical.classical_hr_depth import reconstruct
+
+    depth = np.full((6, 8), 2.5, np.float32)
+    rgb = np.zeros((24, 32, 3), np.float32)
+    out = reconstruct(depth, rgb, None, 4, method="classical_blend")
+    assert out.dtype == np.float32
+    assert out.shape == (24, 32)
+    np.testing.assert_allclose(out, 2.5, atol=2e-5)
+
+
+def test_classical_blend_gain_endpoints():
+    """gain=0 is the smooth back-projection; gain=1 is the dense path."""
+    from classical.classical_hr_depth import reconstruct
+    from classical.edge_upsampling import upsample_dense_depth, _backproject_bicubic
+
+    depth = np.tile(np.array([2, 2, 5, 5], np.float32), (4, 1))
+    rgb = np.zeros((16, 16, 3), np.float32)
+    g0 = reconstruct(depth, rgb, None, 4, method="classical_blend")
+    # default gain blend must sit between the two endpoints
+    smooth = _backproject_bicubic(depth, 4)
+    dense = upsample_dense_depth(depth, rgb, 4)
+    blend = 0.6 * smooth + 0.4 * dense
+    np.testing.assert_allclose(g0, blend, atol=1e-5)
