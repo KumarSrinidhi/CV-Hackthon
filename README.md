@@ -131,7 +131,7 @@ git push hf kumarbro:main --force
 ### Deploying to Vercel (Edge Showcase)
 The repository includes a static edge dashboard in `public/` managed via `vercel.json`:
 1. Connect your GitHub repository to [Vercel](https://vercel.com).
-2. Select the repository `RJsr-08/wfeqwfdwe` (or `KumarSrinidhi/CV-Hackthon`).
+2. Select the repository `KumarSrinidhi/CV-Hackthon` (branch `kumarbro`).
 3. Deploy! Vercel automatically detects `vercel.json` and serves `public/index.html` with zero build configuration.
 Alternatively, deploy directly using the Vercel CLI:
 ```bash

@@ -17,29 +17,45 @@ def generate_synthetic_rgbd_scene(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate a high-resolution RGB image and paired ground-truth depth map
-    with distinct geometric planes, objects, and depth discontinuities.
+    with distinct geometric planes, objects, and depth discontinuities based on seed.
     """
-    np.random.seed(seed)
+    rng = np.random.RandomState(seed)
 
-    # Background wall (depth plane around 3.5m)
+    # Background wall (depth plane around 3.5m - 4.5m)
     y, x = np.mgrid[0:h, 0:w]
-    depth = 3.5 + 0.3 * (x / w) + 0.2 * (y / h)
+    tilt_x = rng.uniform(0.1, 0.4)
+    tilt_y = rng.uniform(0.1, 0.3)
+    base_depth = rng.uniform(3.2, 4.2)
+    depth = base_depth + tilt_x * (x / w) + tilt_y * (y / h)
+
+    # Base background wall color
+    bg_color = rng.randint(40, 200, size=3)
     rgb = np.zeros((h, w, 3), dtype=np.uint8)
-    rgb[:, :] = [180, 190, 200]
+    rgb[:, :] = bg_color
 
-    # Foreground object 1: Table / box (depth ~2.0m)
-    box1_y1, box1_y2 = int(h * 0.4), int(h * 0.85)
-    box1_x1, box1_x2 = int(w * 0.2), int(w * 0.6)
-    depth[box1_y1:box1_y2, box1_x1:box1_x2] = 2.0 + 0.1 * ((y[box1_y1:box1_y2, box1_x1:box1_x2] - box1_y1) / (box1_y2 - box1_y1))
-    rgb[box1_y1:box1_y2, box1_x1:box1_x2] = [80, 120, 180]
+    # Foreground object 1: Table / box
+    b_w = rng.uniform(0.25, 0.45)
+    b_h = rng.uniform(0.3, 0.5)
+    b_x = rng.uniform(0.1, 0.5)
+    b_y = rng.uniform(0.35, 0.5)
+    box1_y1, box1_y2 = int(h * b_y), int(h * min(0.95, b_y + b_h))
+    box1_x1, box1_x2 = int(w * b_x), int(w * min(0.9, b_x + b_w))
 
-    # Foreground object 2: Sphere / cylinder (depth ~1.2m)
-    center_y, center_x = int(h * 0.6), int(w * 0.75)
-    radius = int(min(h, w) * 0.18)
+    box_depth = rng.uniform(1.8, 2.6)
+    depth[box1_y1:box1_y2, box1_x1:box1_x2] = box_depth + 0.1 * ((y[box1_y1:box1_y2, box1_x1:box1_x2] - box1_y1) / max(1, box1_y2 - box1_y1))
+    box_color = rng.randint(40, 240, size=3)
+    rgb[box1_y1:box1_y2, box1_x1:box1_x2] = box_color
+
+    # Foreground object 2: Sphere / cylinder
+    center_y = int(h * rng.uniform(0.45, 0.75))
+    center_x = int(w * rng.uniform(0.6, 0.85))
+    radius = int(min(h, w) * rng.uniform(0.12, 0.22))
     dist_sq = (x - center_x) ** 2 + (y - center_y) ** 2
     sphere_mask = dist_sq <= radius ** 2
-    depth[sphere_mask] = 1.2 + 0.4 * np.sqrt(np.maximum(0.0, 1.0 - dist_sq[sphere_mask] / (radius ** 2)))
-    rgb[sphere_mask] = [200, 70, 70]
+    sphere_depth = rng.uniform(1.0, 1.6)
+    depth[sphere_mask] = sphere_depth + 0.4 * np.sqrt(np.maximum(0.0, 1.0 - dist_sq[sphere_mask] / (radius ** 2)))
+    sphere_color = rng.randint(60, 255, size=3)
+    rgb[sphere_mask] = sphere_color
 
     return rgb, depth.astype(np.float32)
 

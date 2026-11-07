@@ -38,10 +38,13 @@ LAST_RUN = {
 TESTSET_PRESETS = [
     "⭐ [Official Testset] Sample 00 · Indoor Living Space (512×512)",
     "🏢 [Official Testset] Sample 01 · Office Interior (512×512)",
+    "🏫 [Official Testset] Sample 02 · Classroom Hall (512×512)",
+    "📚 [Official Testset] Sample 03 · Living Room Shelves (512×512)",
     "🖥️ [Official Testset] Sample 04 · Dual-Monitor Desk Station (512×512)",
-    "🛋️ [Official Testset] Sample 15 · Lounge & Seating Area (512×512)",
-    "🏔️ [Geometric Benchmark] Curved Sphere & Box Discontinuities",
-    "🏛️ [Geometric Benchmark] Architectural Pillars & Depth Steps",
+    "🛋️ [Official Testset] Sample 05 · Lounge Area (512×512)",
+    "🔴 [Geometric Preset] Curved 3D Shaded Sphere (240×320)",
+    "🏛️ [Geometric Preset] Architectural 3-Pillar Steps (240×320)",
+    "🛋️ [Geometric Preset] Stylized Living Room Scene (240×320)",
     "📁 [Custom Upload] Upload Your Own RGB & Depth Files",
 ]
 
@@ -118,14 +121,24 @@ def get_sample_data(
             return rgb, gt_depth, lr_depth, valid_mask
 
     # 3. Geometric Benchmark Presets
-    if "Pillars" in preset_choice:
-        seed = 201
-    elif "Curved" in preset_choice:
-        seed = 105
+    if "Curved" in preset_choice:
+        path_rgb = os.path.join(os.path.dirname(__file__), "data", "presets", "curved_sphere.png")
+        path_depth = os.path.join(os.path.dirname(__file__), "data", "presets", "curved_sphere_depth.npy")
+    elif "Pillars" in preset_choice:
+        path_rgb = os.path.join(os.path.dirname(__file__), "data", "presets", "pillars.png")
+        path_depth = os.path.join(os.path.dirname(__file__), "data", "presets", "pillars_depth.npy")
     else:
-        seed = 42
+        path_rgb = os.path.join(os.path.dirname(__file__), "data", "presets", "living_room.png")
+        path_depth = os.path.join(os.path.dirname(__file__), "data", "presets", "living_room_depth.npy")
 
-    rgb, gt_depth = generate_synthetic_rgbd_scene(h=240, w=320, seed=seed)
+    if os.path.exists(path_rgb) and os.path.exists(path_depth):
+        rgb_bgr = cv2.imread(path_rgb)
+        rgb = cv2.cvtColor(rgb_bgr, cv2.COLOR_BGR2RGB)
+        gt_depth = np.load(path_depth).astype(np.float32)
+    else:
+        seed = 201 if "Pillars" in preset_choice else (105 if "Curved" in preset_choice else 42)
+        rgb, gt_depth = generate_synthetic_rgbd_scene(h=240, w=320, seed=seed)
+
     lr_depth, valid_mask = create_lr_depth(gt_depth, scale=scale, noise_std=noise_std, hole_ratio=hole_ratio)
     return rgb, gt_depth, lr_depth, valid_mask
 
@@ -163,14 +176,28 @@ def run_super_resolution(
     hole_ratio = hole_ratio_pct / 100.0
 
     # 1. Acquire Input Data
-    rgb, gt_depth, lr_depth, valid_mask = get_sample_data(
+    preset_rgb, preset_gt, preset_lr, preset_mask = get_sample_data(
         preset_choice,
         scale=scale,
-        input_rgb=input_rgb,
-        input_depth_file=input_depth_file,
         noise_std=noise_std,
         hole_ratio=hole_ratio,
     )
+
+    is_custom = ("Custom Upload" in preset_choice) or (
+        input_rgb is not None and not np.array_equal(input_rgb, preset_rgb)
+    )
+
+    if is_custom and input_rgb is not None:
+        rgb, gt_depth, lr_depth, valid_mask = get_sample_data(
+            "Custom Upload",
+            scale=scale,
+            input_rgb=input_rgb,
+            input_depth_file=input_depth_file,
+            noise_std=noise_std,
+            hole_ratio=hole_ratio,
+        )
+    else:
+        rgb, gt_depth, lr_depth, valid_mask = preset_rgb, preset_gt, preset_lr, preset_mask
 
     h_hr, w_hr = rgb.shape[:2]
 

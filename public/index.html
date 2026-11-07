@@ -31,7 +31,7 @@
         </div>
       </div>
       <div class="flex items-center gap-3">
-        <a href="https://github.com/RJsr-08/wfeqwfdwe" target="_blank" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">GitHub Repo</a>
+        <a href="https://github.com/KumarSrinidhi/CV-Hackthon" target="_blank" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">GitHub Repo</a>
         <a href="#interactive-studio" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition">Interactive Studio</a>
       </div>
     </div>
@@ -106,24 +106,35 @@
             </div>
             <div class="grid grid-cols-3 gap-2 mb-2">
               <button onclick="loadPreset('testset00')" id="btn-preset-test00" class="p-2 rounded-lg bg-indigo-600/30 border border-indigo-500/50 text-xs font-semibold text-indigo-200 hover:bg-indigo-600/50 transition text-center truncate">
-                ⭐ Testset #00
+                ⭐ Sample 00
               </button>
               <button onclick="loadPreset('testset01')" id="btn-preset-test01" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center truncate">
-                🏢 Testset #01
+                🏢 Sample 01
+              </button>
+              <button onclick="loadPreset('testset02')" id="btn-preset-test02" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center truncate">
+                🏫 Sample 02
+              </button>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mb-2">
+              <button onclick="loadPreset('testset03')" id="btn-preset-test03" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center truncate">
+                📚 Sample 03
               </button>
               <button onclick="loadPreset('testset04')" id="btn-preset-test04" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center truncate">
-                🖥️ Testset #04
+                🖥️ Sample 04
+              </button>
+              <button onclick="loadPreset('testset05')" id="btn-preset-test05" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center truncate">
+                🛋️ Sample 05
               </button>
             </div>
             <div class="grid grid-cols-3 gap-2">
               <button onclick="loadPreset('benchmark')" id="btn-preset-bench" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center truncate">
-                🏔️ Benchmark
-              </button>
-              <button onclick="loadPreset('living')" id="btn-preset-living" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center truncate">
-                🛋️ Living Room
+                🔴 3D Sphere
               </button>
               <button onclick="loadPreset('pillars')" id="btn-preset-pillars" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center truncate">
                 🏛️ Pillars
+              </button>
+              <button onclick="loadPreset('living')" id="btn-preset-living" class="p-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition text-center truncate">
+                🛋️ Living Room
               </button>
             </div>
           </div>
@@ -266,7 +277,7 @@
             <button onclick="downloadDepthMap()" class="flex-1 py-2.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition flex items-center justify-center gap-2">
               📥 Download HR Depth Map (.PNG)
             </button>
-            <a href="https://github.com/RJsr-08/wfeqwfdwe" target="_blank" class="py-2.5 px-4 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
+            <a href="https://github.com/KumarSrinidhi/CV-Hackthon" target="_blank" class="py-2.5 px-4 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
               ⭐ GitHub Code
             </a>
           </div>
@@ -365,7 +376,7 @@
           For full PyTorch GPU inference with 3D interactive mesh rotation, scanline profiling, and `.OBJ` export, run <code class="bg-black/50 px-2 py-0.5 rounded font-mono text-indigo-300">python app.py</code> or deploy directly to Hugging Face Spaces.
         </p>
       </div>
-      <a href="https://github.com/RJsr-08/wfeqwfdwe#deploying-to-hugging-face-spaces-gradio-studio" target="_blank" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition whitespace-nowrap shadow-lg shadow-indigo-600/30">
+      <a href="https://github.com/KumarSrinidhi/CV-Hackthon#deploying-to-hugging-face-spaces-gradio-studio" target="_blank" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition whitespace-nowrap shadow-lg shadow-indigo-600/30">
         HF Spaces Guide →
       </a>
     </div>
@@ -490,11 +501,14 @@
         'pillars': 'pillars',
         'testset00': 'test00',
         'testset01': 'test01',
-        'testset04': 'test04'
+        'testset02': 'test02',
+        'testset03': 'test03',
+        'testset04': 'test04',
+        'testset05': 'test05'
       };
       const activeKey = keyMap[name] || 'bench';
 
-      ['bench', 'living', 'pillars', 'test00', 'test01', 'test04'].forEach(k => {
+      ['bench', 'living', 'pillars', 'test00', 'test01', 'test02', 'test03', 'test04', 'test05'].forEach(k => {
         const btn = document.getElementById('btn-preset-' + k);
         if (btn) {
           if (k === activeKey) {
@@ -519,7 +533,10 @@
       else if (name === 'pillars') presetFile = 'pillars';
       else if (name === 'testset00') presetFile = 'testset_sample00';
       else if (name === 'testset01') presetFile = 'testset_sample01';
+      else if (name === 'testset02') presetFile = 'testset_sample02';
+      else if (name === 'testset03') presetFile = 'testset_sample03';
       else if (name === 'testset04') presetFile = 'testset_sample04';
+      else if (name === 'testset05') presetFile = 'testset_sample05';
 
       const img = new Image();
       img.crossOrigin = "anonymous";
