@@ -75,8 +75,52 @@ def create_side_by_side_comparison(
         axes[0, i].axis("off")
 
     plt.tight_layout()
-    if save_path is not None:
-        plt.savefig(save_path, bbox_inches="tight", dpi=150)
-        plt.close(fig)
+def plot_scanline_profile(
+    bicubic: np.ndarray,
+    classical: np.ndarray,
+    deep: np.ndarray,
+    hybrid: np.ndarray,
+    gt: Optional[np.ndarray] = None,
+    row_idx: Optional[int] = None,
+    save_path: Optional[str] = None,
+) -> np.ndarray:
+    """
+    Generate a 1D cross-section depth profile plot along a horizontal scanline
+    to visually demonstrate edge sharpness, step response, and texture stability.
+    """
+    h, w = hybrid.shape[:2]
+    if row_idx is None:
+        row_idx = h // 2
+    row_idx = max(0, min(h - 1, int(row_idx)))
 
-    return fig
+    x = np.arange(w)
+    fig, ax = plt.subplots(figsize=(9, 3.2), dpi=150)
+    fig.patch.set_facecolor("#0f172a")
+    ax.set_facecolor("#1e293b")
+
+    if gt is not None:
+        ax.plot(x, gt[row_idx], label="Ground Truth", color="#ffffff", linewidth=2.2, linestyle="--", alpha=0.9)
+    ax.plot(x, bicubic[row_idx], label="Bicubic Baseline (Blurry Edge)", color="#ef4444", linewidth=1.8, alpha=0.85)
+    ax.plot(x, classical[row_idx], label="Classical JBU", color="#f59e0b", linewidth=1.8, linestyle=":", alpha=0.85)
+    ax.plot(x, deep[row_idx], label="Deep (EdgeGuidedSRNet)", color="#38bdf8", linewidth=1.8, alpha=0.85)
+    ax.plot(x, hybrid[row_idx], label="Hybrid (Optimal Sharp Step)", color="#10b981", linewidth=2.5, alpha=0.95)
+
+    ax.set_title(f"1D Depth Discontinuity Profile (Horizontal Scanline y = {row_idx})", fontsize=11, fontweight="bold", color="#f8fafc", pad=10)
+    ax.set_xlabel("Horizontal Pixel Coordinate (X)", fontsize=9, color="#cbd5e1")
+    ax.set_ylabel("Depth (meters)", fontsize=9, color="#cbd5e1")
+    ax.tick_params(colors="#94a3b8", labelsize=8)
+    ax.grid(True, linestyle="--", alpha=0.25, color="#64748b")
+    ax.legend(loc="upper right", facecolor="#0f172a", edgecolor="#334155", labelcolor="#f8fafc", fontsize=8)
+
+    plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path, facecolor=fig.get_facecolor(), bbox_inches="tight")
+        plt.close(fig)
+        img = cv2.imread(save_path)[:, :, ::-1]
+        return img
+
+    fig.canvas.draw()
+    img = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    img = img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    plt.close(fig)
+    return img

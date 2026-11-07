@@ -1,5 +1,5 @@
 # Problem Statement 4 (ProbID - P4): Edge-Preserving Depth Super-Resolution and Refinement
-# World-Class Hugging Face Spaces Deployment Application (Gradio Interface)
+# Premium Production-Grade Web Application for Hugging Face Spaces & Local Deployment
 
 import os
 import sys
@@ -16,16 +16,34 @@ from classical.pipeline import classical_hr_depth
 from deep.inference import deep_hr_depth
 from hybrid.pipeline import hybrid_hr_depth
 from eval.metrics import compute_all_metrics, extract_depth_edges
-from app.visualization import colorize_depth, create_side_by_side_comparison
+from app.visualization import colorize_depth, create_side_by_side_comparison, plot_scanline_profile
 from app.point_cloud import export_depth_to_ply, export_depth_to_mesh_obj
 from data.dataset import generate_synthetic_rgbd_scene
 from data.degradation import create_lr_depth
 
 
-def get_preset_scene(scene_id: str):
-    seed = 42 if "Living Room" in scene_id else (105 if "Curved" in scene_id else 201)
-    rgb, gt_depth = generate_synthetic_rgbd_scene(h=240, w=320, seed=seed)
-    return rgb, gt_depth
+# Cache for current run results to power scanline analysis
+LAST_RUN = {
+    "rgb": None,
+    "gt": None,
+    "bicubic": None,
+    "classical": None,
+    "deep": None,
+    "hybrid": None,
+}
+
+
+def load_preset(scene_name: str) -> np.ndarray:
+    if "Living Room" in scene_name:
+        path = "data/presets/living_room.png"
+    elif "Curved" in scene_name:
+        path = "data/presets/curved_sphere.png"
+    else:
+        path = "data/presets/pillars.png"
+    if os.path.isfile(path):
+        return cv2.imread(path)[:, :, ::-1]
+    rgb, _ = generate_synthetic_rgbd_scene(240, 320, seed=42)
+    return rgb
 
 
 def run_super_resolution(
@@ -37,17 +55,19 @@ def run_super_resolution(
     hole_ratio_pct: float,
     alpha: float,
     use_consistency: bool,
-    display_mode: str,
+    scanline_row: int,
 ) -> Tuple[
-    Tuple[np.ndarray, np.ndarray],  # ImageSlider value (before, after)
-    np.ndarray,                     # Primary visualization
-    np.ndarray,                     # LR input visualization
-    np.ndarray,                     # Edge map visualization
-    str,                            # HTML KPI chips
+    Tuple[np.ndarray, np.ndarray],  # ImageSlider pair
+    np.ndarray,                     # Degraded LR input
+    np.ndarray,                     # Edge map
+    np.ndarray,                     # Scanline profile plot
+    np.ndarray,                     # Multi-track panel
+    str,                            # HTML KPI cards
     pd.DataFrame,                   # Metrics table
-    str,                            # 3D Model file (OBJ)
-    str,                            # Point Cloud file (PLY)
-    str,                            # Raw Depth (NPY)
+    str,                            # OBJ 3D Model
+    str,                            # OBJ download
+    str,                            # PLY download
+    str,                            # NPY download
 ]:
     os.makedirs("outputs", exist_ok=True)
     hole_ratio = hole_ratio_pct / 100.0
@@ -56,11 +76,11 @@ def run_super_resolution(
     if input_rgb is not None:
         rgb = np.asarray(input_rgb, dtype=np.uint8)
         h, w = rgb.shape[:2]
-        # Generate paired synthetic depth for user-uploaded custom photo
         gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255.0
         gt_depth = 1.0 + 3.0 * (1.0 - gray)
     else:
-        rgb, gt_depth = get_preset_scene(preset_choice)
+        seed = 42 if "Living Room" in preset_choice else (105 if "Curved" in preset_choice else 201)
+        rgb, gt_depth = generate_synthetic_rgbd_scene(h=240, w=320, seed=seed)
 
     h_hr, w_hr = rgb.shape[:2]
 
@@ -96,43 +116,51 @@ def run_super_resolution(
     )
     lat_h = (time.perf_counter() - t0) * 1000.0 + lat_c + lat_d
 
+    # Update cache for scanline inspection
+    LAST_RUN["rgb"] = rgb
+    LAST_RUN["gt"] = gt_depth
+    LAST_RUN["bicubic"] = d_b
+    LAST_RUN["classical"] = d_c
+    LAST_RUN["deep"] = d_d
+    LAST_RUN["hybrid"] = d_h
+
     # 4. Colorized Renderings
     lr_upsampled_nearest = cv2.resize(lr_depth, (w_hr, h_hr), interpolation=cv2.INTER_NEAREST)
     lr_vis = colorize_depth(lr_upsampled_nearest, cmap=colormap_choice)
+    d_h_vis = colorize_depth(d_h, cmap=colormap_choice)
     b_vis = colorize_depth(d_b, cmap=colormap_choice)
     c_vis = colorize_depth(d_c, cmap=colormap_choice)
     d_vis = colorize_depth(d_d, cmap=colormap_choice)
-    h_vis = colorize_depth(d_h, cmap=colormap_choice)
 
-    # 5. Determine Primary Display
-    if display_mode == "Side-by-Side Multi-Track Panel":
-        vis_path = "outputs/web_comparison.png"
-        create_side_by_side_comparison(
-            rgb, lr_depth, d_b, d_c, d_d, d_h, gt_depth=gt_depth, save_path=vis_path
-        )
-        primary_vis = cv2.imread(vis_path)[:, :, ::-1]
-    elif display_mode == "Deep Learning (EdgeGuidedSRNet)":
-        primary_vis = d_vis
-    elif display_mode == "Classical (Joint Bilateral Upsampling)":
-        primary_vis = c_vis
-    elif display_mode == "Bicubic Baseline":
-        primary_vis = b_vis
-    else:
-        primary_vis = h_vis
+    # ImageSlider: Before (Degraded LR) vs After (Hybrid Depth)
+    slider_pair = (lr_vis, d_h_vis)
 
-    # ImageSlider: Before (Degraded LR / Bicubic) vs After (Hybrid Reconstructed Depth)
-    slider_pair = (lr_vis, h_vis)
+    # Multi-track side-by-side comparison panel
+    panel_path = "outputs/web_comparison.png"
+    create_side_by_side_comparison(
+        rgb, lr_depth, d_b, d_c, d_d, d_h, gt_depth=gt_depth, save_path=panel_path
+    )
+    panel_vis = cv2.imread(panel_path)[:, :, ::-1]
 
     # Edge map of reconstructed depth
     edges = extract_depth_edges(d_h, threshold=0.04)
     edge_vis = (edges.astype(np.uint8) * 255)
     edge_vis_rgb = np.stack([edge_vis, edge_vis, edge_vis], axis=-1)
 
-    # 6. Compute Comprehensive Metrics
+    # 1D Scanline profile plot
+    scan_row = min(max(0, scanline_row), h_hr - 1)
+    scan_plot = plot_scanline_profile(
+        d_b, d_c, d_d, d_h, gt=gt_depth, row_idx=scan_row, save_path="outputs/scanline_plot.png"
+    )
+
+    # 5. Compute Comprehensive Metrics
     m_b = compute_all_metrics(d_b, gt_depth, valid_mask=valid_mask)
     m_c = compute_all_metrics(d_c, gt_depth, valid_mask=valid_mask)
     m_d = compute_all_metrics(d_d, gt_depth, valid_mask=valid_mask)
     m_h = compute_all_metrics(d_h, gt_depth, valid_mask=valid_mask)
+
+    psnr_delta = m_h["psnr"] - m_b["psnr"]
+    rmse_delta = m_b["rmse"] - m_h["rmse"]
 
     metrics_df = pd.DataFrame([
         {"Method": "Bicubic Baseline", "RMSE (m)": f"{m_b['rmse']:.4f}", "MAE (m)": f"{m_b['mae']:.4f}", "PSNR (dB)": f"{m_b['psnr']:.2f}", "SSIM": f"{m_b['ssim']:.4f}", "Boundary RMSE": f"{m_b['boundary_rmse']:.4f}", "Edge F1": f"{m_b['edge_f1']:.3f}", "Latency": f"{lat_b:.1f} ms"},
@@ -141,33 +169,33 @@ def run_super_resolution(
         {"Method": f"Hybrid (Optimal α={alpha:.2f})", "RMSE (m)": f"{m_h['rmse']:.4f}", "MAE (m)": f"{m_h['mae']:.4f}", "PSNR (dB)": f"{m_h['psnr']:.2f}", "SSIM": f"{m_h['ssim']:.4f}", "Boundary RMSE": f"{m_h['boundary_rmse']:.4f}", "Edge F1": f"{m_h['edge_f1']:.3f}", "Latency": f"{lat_h:.1f} ms"},
     ])
 
-    # 7. HTML KPI Chip Cards
+    # 6. Modern Glassmorphic KPI Cards
     kpi_html = f"""
-    <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 130px; background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); color: white; padding: 12px; border-radius: 10px; text-align: center; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
-            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85;">Hybrid RMSE</div>
-            <div style="font-size: 1.45rem; font-weight: 800;">{m_h['rmse']:.4f} m</div>
-            <div style="font-size: 0.7rem; opacity: 0.9;">vs Bicubic {m_b['rmse']:.4f} m</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 14px;">
+        <div style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.95), rgba(49, 46, 129, 0.95)); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.3);">
+            <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #c7d2fe; font-weight: 600;">Hybrid RMSE</div>
+            <div style="font-size: 1.55rem; font-weight: 800; color: #ffffff; margin: 4px 0;">{m_h['rmse']:.4f} m</div>
+            <div style="font-size: 0.72rem; color: #a5b4fc;">{'+' if rmse_delta >= 0 else ''}{rmse_delta:.4f} m vs bicubic</div>
         </div>
-        <div style="flex: 1; min-width: 130px; background: linear-gradient(135deg, #059669 0%, #065f46 100%); color: white; padding: 12px; border-radius: 10px; text-align: center; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2);">
-            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85;">Hybrid PSNR</div>
-            <div style="font-size: 1.45rem; font-weight: 800;">{m_h['psnr']:.2f} dB</div>
-            <div style="font-size: 0.7rem; opacity: 0.9;">+{m_h['psnr'] - m_b['psnr']:.2f} dB over baseline</div>
+        <div style="background: linear-gradient(135deg, rgba(5, 150, 105, 0.95), rgba(6, 95, 70, 0.95)); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 8px 16px -4px rgba(5, 150, 105, 0.3);">
+            <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #a7f3d0; font-weight: 600;">Peak SNR</div>
+            <div style="font-size: 1.55rem; font-weight: 800; color: #ffffff; margin: 4px 0;">{m_h['psnr']:.2f} dB</div>
+            <div style="font-size: 0.72rem; color: #6ee7b7;">{'+' if psnr_delta >= 0 else ''}{psnr_delta:.2f} dB over baseline</div>
         </div>
-        <div style="flex: 1; min-width: 130px; background: linear-gradient(135deg, #d97706 0%, #92400e 100%); color: white; padding: 12px; border-radius: 10px; text-align: center; box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.2);">
-            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85;">Edge F1 Score</div>
-            <div style="font-size: 1.45rem; font-weight: 800;">{m_h['edge_f1']:.3f}</div>
-            <div style="font-size: 0.7rem; opacity: 0.9;">Preserved Boundaries</div>
+        <div style="background: linear-gradient(135deg, rgba(217, 119, 6, 0.95), rgba(146, 64, 14, 0.95)); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 8px 16px -4px rgba(217, 119, 6, 0.3);">
+            <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #fde68a; font-weight: 600;">Edge F1 Score</div>
+            <div style="font-size: 1.55rem; font-weight: 800; color: #ffffff; margin: 4px 0;">{m_h['edge_f1']:.3f}</div>
+            <div style="font-size: 0.72rem; color: #fcd34d;">Boundary Precision</div>
         </div>
-        <div style="flex: 1; min-width: 130px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; padding: 12px; border-radius: 10px; text-align: center; box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.2);">
-            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85;">SSIM Fidelity</div>
-            <div style="font-size: 1.45rem; font-weight: 800;">{m_h['ssim']:.4f}</div>
-            <div style="font-size: 0.7rem; opacity: 0.9;">Structural index</div>
+        <div style="background: linear-gradient(135deg, rgba(2, 132, 199, 0.95), rgba(3, 105, 161, 0.95)); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 8px 16px -4px rgba(2, 132, 199, 0.3);">
+            <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #bae6fd; font-weight: 600;">SSIM Fidelity</div>
+            <div style="font-size: 1.55rem; font-weight: 800; color: #ffffff; margin: 4px 0;">{m_h['ssim']:.4f}</div>
+            <div style="font-size: 0.72rem; color: #7dd3fc;">Structural Match</div>
         </div>
     </div>
     """
 
-    # 8. Export 3D Mesh and Point Cloud Files
+    # 7. 3D Mesh and Point Cloud Files
     obj_path = "outputs/reconstructed_surface.obj"
     export_depth_to_mesh_obj(d_h, rgb, output_path=obj_path, target_dim=65)
 
@@ -177,63 +205,131 @@ def run_super_resolution(
     npy_path = "outputs/pred_hybrid_depth.npy"
     np.save(npy_path, d_h)
 
-    return slider_pair, primary_vis, lr_vis, edge_vis_rgb, kpi_html, metrics_df, obj_path, ply_path, npy_path
+    return (
+        slider_pair,
+        lr_vis,
+        edge_vis_rgb,
+        scan_plot,
+        panel_vis,
+        kpi_html,
+        metrics_df,
+        obj_path,
+        obj_path,
+        ply_path,
+        npy_path,
+    )
 
 
-# Custom CSS styling for Hugging Face Spaces
+def update_scanline_only(row_idx: int) -> np.ndarray:
+    if LAST_RUN["hybrid"] is None:
+        rgb, gt = generate_synthetic_rgbd_scene(240, 320, seed=42)
+        d_b = cv2.resize(cv2.resize(gt, (80, 60)), (320, 240), interpolation=cv2.INTER_CUBIC)
+        return plot_scanline_profile(d_b, d_b, d_b, gt, gt=gt, row_idx=row_idx)
+    return plot_scanline_profile(
+        LAST_RUN["bicubic"],
+        LAST_RUN["classical"],
+        LAST_RUN["deep"],
+        LAST_RUN["hybrid"],
+        gt=LAST_RUN["gt"],
+        row_idx=row_idx,
+    )
+
+
+# Custom UI CSS
 custom_css = """
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-.header-card {
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
-    color: white;
-    padding: 24px 30px;
-    border-radius: 14px;
-    margin-bottom: 20px;
-    box-shadow: 0 10px 25px -5px rgba(49, 46, 129, 0.3);
+.gradio-container {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
 }
-.header-badge {
-    display: inline-block;
-    background: rgba(255, 255, 255, 0.18);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+.hero-banner {
+    background: radial-gradient(circle at 10% 20%, #1e1b4b 0%, #0f172a 90%);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 12px 30px -10px rgba(15, 23, 42, 0.6);
+}
+.hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(129, 140, 248, 0.35);
+    color: #a5b4fc;
     padding: 4px 12px;
     border-radius: 9999px;
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     margin-bottom: 8px;
-    letter-spacing: 0.04em;
 }
-.header-title {
-    font-size: 2.1rem;
+.hero-title {
+    font-size: 2.15rem;
     font-weight: 800;
-    margin: 4px 0 8px 0;
+    color: #f8fafc;
     letter-spacing: -0.02em;
+    margin: 4px 0 8px 0;
 }
-.header-desc {
-    font-size: 1.05rem;
-    opacity: 0.9;
-    max-width: 900px;
+.hero-desc {
+    color: #94a3b8;
+    font-size: 0.98rem;
     line-height: 1.5;
+    max-width: 950px;
 }
-.btn-primary {
+.hero-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+.hero-chip {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+.btn-reconstruct {
     background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
-    color: white !important;
+    color: #ffffff !important;
     font-weight: 700 !important;
+    font-size: 1rem !important;
+    border: none !important;
     border-radius: 10px !important;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35) !important;
+    padding: 12px 20px !important;
+    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.35) !important;
 }
 """
+
+theme = gr.themes.Soft(
+    primary_hue="indigo",
+    secondary_hue="emerald",
+    neutral_hue="slate",
+    font=[gr.themes.GoogleFont("Plus Jakarta Sans"), "ui-sans-serif", "system-ui", "sans-serif"],
+)
 
 with gr.Blocks(title="Edge-Preserving Depth Super-Resolution (P4)") as demo:
     gr.HTML(
         f"""
         <style>{custom_css}</style>
-        <div class="header-card">
-            <div class="header-badge">🚀 PROBLEM STATEMENT 4 (ProbID - P4) · HACKATHON 2026</div>
-            <div class="header-title">Edge-Preserving Depth Map Super-Resolution & Refinement</div>
-            <div class="header-desc">
-                An intelligent hybrid system fusing <b>Joint Bilateral Upsampling</b> with <b>Edge-Guided Neural Networks</b>
-                and <b>Backward Measurement Consistency Projection</b> to reconstruct crisp object boundaries without texture-copying artifacts.
+        <div class="hero-banner">
+            <div class="hero-tag">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                HACKATHON 2026 · PROBLEM STATEMENT 4 (ProbID - P4)
+            </div>
+            <div class="hero-title">Edge-Preserving Depth Map Super-Resolution & Refinement</div>
+            <div class="hero-desc">
+                An intelligent hybrid depth reconstruction platform combining <b>Joint Bilateral Upsampling</b> with <b>EdgeGuidedSRNet Neural Guidance</b>
+                and <b>Backward Measurement Consistency Projection</b> to reconstruct crisp, physical depth discontinuities without texture-bleeding artifacts.
+            </div>
+            <div class="hero-chips">
+                <span class="hero-chip">⚡ PyTorch 2.14 / CUDA</span>
+                <span class="hero-chip">🎯 Optimal Fixed α = 0.02</span>
+                <span class="hero-chip">📐 Gradient Edge Gating</span>
+                <span class="hero-chip">🧊 3D WebGL Mesh & PLY Export</span>
+                <span class="hero-chip">📊 NYU-v2 Protocol Verification</span>
             </div>
         </div>
         """
@@ -243,13 +339,10 @@ with gr.Blocks(title="Edge-Preserving Depth Super-Resolution (P4)") as demo:
         with gr.TabItem("🔮 Interactive Super-Resolution Studio"):
             with gr.Row():
                 with gr.Column(scale=4):
-                    gr.Markdown("### 🎛️ Input & Degradation Controls")
-                    input_rgb = gr.Image(
-                        label="Upload Custom RGB Guidance Image (Optional)",
-                        type="numpy",
-                    )
+                    gr.Markdown("### 🎛️ Input Controls & Degradation")
+                    
                     preset_choice = gr.Dropdown(
-                        label="Or Choose Pre-Packaged RGB-D Benchmark Scene",
+                        label="Choose Pre-Packaged Benchmark Scene",
                         choices=[
                             "Living Room (Indoor Furniture & Objects)",
                             "Curved Shapes (Sphere Discontinuities)",
@@ -257,6 +350,13 @@ with gr.Blocks(title="Edge-Preserving Depth Super-Resolution (P4)") as demo:
                         ],
                         value="Living Room (Indoor Furniture & Objects)",
                     )
+                    
+                    input_rgb = gr.Image(
+                        label="Or Upload Custom RGB Guidance Image",
+                        type="numpy",
+                        height=200,
+                    )
+
                     with gr.Row():
                         scale = gr.Radio(
                             label="Super-Resolution Scale",
@@ -268,19 +368,6 @@ with gr.Blocks(title="Edge-Preserving Depth Super-Resolution (P4)") as demo:
                             choices=["turbo", "plasma", "viridis", "inferno", "magma", "bone", "gray"],
                             value="turbo",
                         )
-
-                    display_mode = gr.Dropdown(
-                        label="Primary Visualization Display",
-                        choices=[
-                            "Interactive Before/After Swipe Slider",
-                            "Side-by-Side Multi-Track Panel",
-                            "Hybrid Track (Optimal)",
-                            "Deep Learning (EdgeGuidedSRNet)",
-                            "Classical (Joint Bilateral Upsampling)",
-                            "Bicubic Baseline",
-                        ],
-                        value="Interactive Before/After Swipe Slider",
-                    )
 
                     with gr.Accordion("⚙️ Sensor Simulation & Fusion Hyperparameters", open=False):
                         noise_std = gr.Slider(
@@ -297,46 +384,60 @@ with gr.Blocks(title="Edge-Preserving Depth Super-Resolution (P4)") as demo:
                         )
                         use_consistency = gr.Checkbox(
                             value=True,
-                            label="Enforce Measurement Consistency Projection: r_LR = D_LR - S(D_f)"
+                            label="Enforce Measurement Consistency: r_LR = D_LR - S(D_f)"
+                        )
+                        scanline_row = gr.Slider(
+                            minimum=10, maximum=230, step=5, value=120,
+                            label="Scanline Row for 1D Profile Inspection (y)"
                         )
 
-                    run_btn = gr.Button("✨ Reconstruct High-Resolution Depth", elem_classes=["btn-primary"], size="lg")
+                    run_btn = gr.Button("✨ Reconstruct High-Resolution Depth", elem_classes=["btn-reconstruct"], size="lg")
 
                 with gr.Column(scale=6):
                     gr.Markdown("### 📈 Reconstructed Output & Performance")
                     kpi_display = gr.HTML()
 
-                    # Dynamic display: ImageSlider for Before/After swipe
                     image_slider = gr.ImageSlider(
                         label="Swipe to Compare: Degraded LR Input vs. Reconstructed Hybrid Depth",
                         show_label=True,
                     )
-                    primary_image = gr.Image(
-                        label="Reconstruction / Comparison Panel",
-                        type="numpy",
-                        visible=False,
-                    )
 
                     with gr.Row():
-                        lr_output = gr.Image(label="Degraded LR Input (Nearest)", type="numpy")
-                        edge_output = gr.Image(label="Depth Discontinuities (Edge Map)", type="numpy")
+                        lr_output = gr.Image(label="Degraded LR Input (Nearest Grid)", type="numpy")
+                        edge_output = gr.Image(label="Recovered Depth Boundaries (Edge Map)", type="numpy")
 
                     gr.Markdown("### 📋 Multi-Track Performance Scorecard")
                     metrics_table = gr.Dataframe(
                         headers=["Method", "RMSE (m)", "MAE (m)", "PSNR (dB)", "SSIM", "Boundary RMSE", "Edge F1", "Latency"],
                     )
 
-        with gr.TabItem("🧊 3D Interactive Depth Mesh & Point Cloud"):
-            gr.Markdown("### 🌐 Real-Time 3D WebGL Surface Inspection")
-            gr.Markdown("Rotate, pan, and zoom the reconstructed depth map directly in your browser. Vertex colors are sampled directly from the RGB guidance image.")
+        with gr.TabItem("📐 Edge & Scanline Discontinuity Inspector"):
+            gr.Markdown("### 🔬 1D Depth Discontinuity Profile (Step-Response Analysis)")
+            gr.Markdown("Inspect how sharp depth steps are reconstructed. Classical and Hybrid prevent the slope-blurring artifact typical of Bicubic interpolation.")
+            
+            with gr.Row():
+                scanline_slider = gr.Slider(
+                    minimum=10, maximum=230, step=5, value=120,
+                    label="Inspect Horizontal Scanline Row (y-coordinate)"
+                )
+                scan_btn = gr.Button("Update Scanline Slice", size="sm")
+            
+            scanline_output = gr.Image(label="1D Cross-Section Depth Profile", type="numpy")
+            
+            gr.Markdown("### 🖼️ 6-Panel Multi-Track Comparison Panel")
+            multi_panel_image = gr.Image(label="Side-by-Side Track Panel", type="numpy")
+
+        with gr.TabItem("🧊 3D Digital Twin & Point Cloud Studio"):
+            gr.Markdown("### 🌐 Interactive 3D WebGL Surface Canvas")
+            gr.Markdown("Click, drag, and scroll to inspect the reconstructed depth geometry in 3D. Vertex colors are sampled directly from the RGB guidance image.")
             with gr.Row():
                 with gr.Column(scale=7):
-                    model_3d = gr.Model3D(label="Interactive 3D Textured Mesh (.OBJ)")
+                    model_3d = gr.Model3D(label="Interactive 3D Textured Surface Mesh (.OBJ)")
                 with gr.Column(scale=3):
-                    gr.Markdown("#### 📥 Export 3D Assets")
-                    dl_obj = gr.File(label="3D Mesh (.OBJ)")
-                    dl_ply = gr.File(label="3D Point Cloud (.PLY)")
-                    dl_npy = gr.File(label="Raw Depth Numpy Array (.NPY)")
+                    gr.Markdown("#### 📥 Export Reconstructed 3D Assets")
+                    dl_obj = gr.File(label="Download 3D Mesh (.OBJ)")
+                    dl_ply = gr.File(label="Download 3D Point Cloud (.PLY)")
+                    dl_npy = gr.File(label="Download Metric Depth (.NPY)")
 
         with gr.TabItem("📊 Multi-Scale Benchmark & Ablation Lab"):
             gr.Markdown(
@@ -378,27 +479,21 @@ with gr.Blocks(title="Edge-Preserving Depth Super-Resolution (P4)") as demo:
                 """
             )
 
-    # Wire interactive run button
-    def update_outputs(*args):
-        slider_pair, primary_vis, lr_vis, edge_vis, kpi_html, metrics_df, obj_path, ply_path, npy_path = run_super_resolution(*args)
-        display_mode_val = args[-1]
-        is_panel = display_mode_val == "Side-by-Side Multi-Track Panel"
-        return (
-            slider_pair,
-            gr.update(value=primary_vis, visible=is_panel),
-            gr.update(visible=not is_panel),
-            lr_vis,
-            edge_vis,
-            kpi_html,
-            metrics_df,
-            obj_path,
-            obj_path,
-            ply_path,
-            npy_path,
-        )
+    # Event handlers
+    preset_choice.change(
+        fn=load_preset,
+        inputs=[preset_choice],
+        outputs=[input_rgb],
+    )
+
+    scan_btn.click(
+        fn=update_scanline_only,
+        inputs=[scanline_slider],
+        outputs=[scanline_output],
+    )
 
     run_btn.click(
-        fn=update_outputs,
+        fn=run_super_resolution,
         inputs=[
             input_rgb,
             preset_choice,
@@ -408,14 +503,14 @@ with gr.Blocks(title="Edge-Preserving Depth Super-Resolution (P4)") as demo:
             hole_ratio_pct,
             alpha,
             use_consistency,
-            display_mode,
+            scanline_row,
         ],
         outputs=[
             image_slider,
-            primary_image,
-            image_slider,
             lr_output,
             edge_output,
+            scanline_output,
+            multi_panel_image,
             kpi_display,
             metrics_table,
             model_3d,
@@ -426,4 +521,4 @@ with gr.Blocks(title="Edge-Preserving Depth Super-Resolution (P4)") as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, share=False)
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=False, theme=theme)
