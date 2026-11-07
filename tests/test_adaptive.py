@@ -141,3 +141,75 @@ def test_hybrid_v2_deterministic(synthetic_pair):
     a = hybrid_hr_depth(lr, rgb, None, 2, deep_fn=deep_fn)
     b = hybrid_hr_depth(lr, rgb, None, 2, deep_fn=deep_fn)
     np.testing.assert_array_equal(a, b)
+
+
+# --------------------------------------------------------------------- skip classical
+def test_v2_skips_classical_outside_holes(synthetic_pair, monkeypatch):
+    """Latency: in regimes where the v2 classical weight is 0, the classical branch
+    must not run at all."""
+    import classical.pipeline
+    import hybrid.pipeline
+    from hybrid import hybrid_hr_depth
+
+    lr, rgb = synthetic_pair
+
+    def boom(*args, **kwargs):
+        raise AssertionError("classical branch must be skipped in clean regimes")
+
+    monkeypatch.setattr(hybrid.pipeline, "classical_hr_depth", boom)
+    monkeypatch.setattr(classical.pipeline, "classical_hr_depth", boom)
+
+    def deep_fn(lr_depth, hr_rgb, valid_mask, scale):
+        return np.full((16, 16), 2.1, np.float32)
+
+    out = hybrid_hr_depth(lr, rgb, None, 2, deep_fn=deep_fn)
+    assert out.shape == (16, 16)
+    assert np.isfinite(out).all()
+
+
+def test_v2_still_calls_classical_in_holes(synthetic_pair, monkeypatch):
+    """The holes regime has a calibrated non-zero classical weight: it must run."""
+    import hybrid.pipeline
+    from hybrid import hybrid_hr_depth
+
+    lr = np.full((8, 8), 2.0, np.float32)
+    valid = np.ones_like(lr, bool)
+    valid[2:4, 2:4] = False
+    lr = lr.copy()
+    lr[~valid] = 0.0
+    rgb = np.zeros((16, 16, 3), np.float32)
+
+    called = []
+    monkeypatch.setattr(
+        hybrid.pipeline, "classical_hr_depth",
+        lambda *a, **k: called.append(1) or np.full((16, 16), 2.5, np.float32),
+    )
+
+    def deep_fn(lr_depth, hr_rgb, valid_mask, scale):
+        return np.full((16, 16), 2.1, np.float32)
+
+    out = hybrid_hr_depth(lr, rgb, valid, 2, deep_fn=deep_fn)
+    assert called
+    assert np.isfinite(out).all()
+
+
+def test_bicubic_fallback_fills_invalid_deep(synthetic_pair, monkeypatch):
+    """With classical skipped, invalid deep pixels fall back to a bicubic upsample."""
+    import hybrid.pipeline
+    from hybrid import hybrid_hr_depth
+
+    lr, rgb = synthetic_pair
+
+    def boom(*args, **kwargs):
+        raise AssertionError("classical branch must be skipped in clean regimes")
+
+    monkeypatch.setattr(hybrid.pipeline, "classical_hr_depth", boom)
+
+    def deep_fn(lr_depth, hr_rgb, valid_mask, scale):
+        out = np.full((16, 16), 2.1, np.float32)
+        out[0, 0] = -1.0  # invalid deep pixel
+        return out
+
+    out = hybrid_hr_depth(lr, rgb, None, 2, deep_fn=deep_fn)
+    assert np.isfinite(out).all()
+    assert out[0, 0] > 0  # filled from the LR, not the invalid value

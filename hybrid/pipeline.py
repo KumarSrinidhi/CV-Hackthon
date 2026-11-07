@@ -78,6 +78,26 @@ def _v2_weights(Dc, Dd, lr_depth, valid_mask):
     return wc, wd, regime
 
 
+def _bicubic_fallback(lr_depth, valid_mask, scale):
+    """Cheap HR fallback used where the classical branch is skipped and the deep
+    branch returned invalid pixels (bicubic upsample of the nearest-filled LR)."""
+    import cv2
+
+    from data.preprocessing import fill_invalid_nearest
+
+    lr = np.asarray(lr_depth, dtype=np.float32)
+    valid = np.isfinite(lr) & (lr > 0)
+    if valid_mask is not None:
+        mask = np.asarray(valid_mask, dtype=bool)
+        if mask.ndim == 3 and mask.shape[2] == 1:
+            mask = mask[..., 0]
+        valid &= mask
+    filled = fill_invalid_nearest(np.where(valid, lr, np.float32(0)), valid)
+    h, w = lr.shape
+    out = cv2.resize(filled, (w * scale, h * scale), interpolation=cv2.INTER_CUBIC)
+    return np.maximum(out, 0).astype(np.float32)
+
+
 def hybrid_hr_depth(
     lr_depth,
     hr_rgb,
@@ -95,6 +115,7 @@ def hybrid_hr_depth(
     deep_fn=None,
     return_intermediates=False,
     fusion="v2",
+    skip_classical=None,
 ):
     """Reconstruct HR depth with the full hybrid pipeline.
 
@@ -109,11 +130,29 @@ def hybrid_hr_depth(
     Raises ``NotImplementedError`` when the deep branch is unavailable (no
     checkpoint, unsupported scale, or missing torch), so evaluation can report
     "not evaluated" honestly. If the deep branch runs but returns invalid pixels,
-    those pixels fall back to the classical branch.
+    those pixels fall back to the classical branch (or a cheap bicubic upsample
+    when the classical branch was skipped).
+
+    ``skip_classical`` (v2 only): by default (None) the classical branch is
+    skipped in regimes where its calibrated weight is 0 (clean / noise) —
+    the v2 fusion gives it zero weight there, so computing it is pure latency.
+    Any deep-output hole is then filled from a bicubic upsample of the LR.
+    Force with ``skip_classical=False`` to always compute it.
     """
     rgb_f = to_float_rgb(np.asarray(hr_rgb))
 
-    Dc = classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
+    if fusion == "v2":
+        from deep.adaptive import detect_regime
+
+        regime0 = detect_regime(np.asarray(lr_depth, dtype=np.float32), valid_mask)
+        compute_classical = (regime0 == "holes") if skip_classical is None else not skip_classical
+        Dc = (
+            classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
+            if compute_classical
+            else _bicubic_fallback(lr_depth, valid_mask, scale)
+        )
+    else:
+        Dc = classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
     Dd = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn, adaptive=(fusion == "v2"))
 
     if fusion == "v2":
