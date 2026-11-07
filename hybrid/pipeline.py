@@ -22,6 +22,7 @@ from .boundary_refinement import refine_hybrid_depth
 from .confidence import estimate_confidence
 from .consistency import enforce_consistency
 from .fusion import fuse, fuse_fixed
+from data.degradation import forward_operator
 
 
 def _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale):
@@ -56,6 +57,13 @@ def hybrid_hr_depth(
     scale=4,
     *,
     use_consistency=True,
+    consistency_strength=0.25,
+    consistency_iterations=1,
+    use_boundary_refinement=False,
+    adaptive=True,
+    classical_alpha=None,
+    max_classical_weight=0.1,
+    operator=None,
     deep_fn=None,
     return_intermediates=False,
 ):
@@ -75,12 +83,27 @@ def hybrid_hr_depth(
     Dc = classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
     Dd = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
 
-    Wc, Wd = estimate_confidence(Dc, Dd, lr_depth, valid_mask, rgb_f, scale)
-    Df = fuse(Dc, Dd, Wc, Wd)
-    Df_boundary = refine_hybrid_depth(Df, rgb_f)
+    if classical_alpha is not None:
+        if not 0.0 <= classical_alpha <= 1.0:
+            raise ValueError("classical_alpha must be in [0, 1]")
+        Df = fuse_fixed(Dc, Dd, classical_alpha)
+        Wc = np.full_like(Dc, classical_alpha, dtype=np.float32)
+        Wd = np.full_like(Dc, 1.0 - classical_alpha, dtype=np.float32)
+    else:
+        Wc, Wd = estimate_confidence(
+            Dc, Dd, lr_depth, valid_mask, rgb_f, scale,
+            adaptive=adaptive, max_classical_weight=max_classical_weight,
+            operator=operator or forward_operator(scale, "bicubic"),
+        )
+        Df = fuse(Dc, Dd, Wc, Wd)
+    Df_boundary = refine_hybrid_depth(Df, rgb_f) if use_boundary_refinement else Df
 
     if use_consistency:
-        Df = enforce_consistency(Df_boundary, lr_depth, valid_mask, scale)
+        Df = enforce_consistency(
+            Df_boundary, lr_depth, valid_mask, scale,
+            operator=operator, strength=consistency_strength,
+            iterations=consistency_iterations,
+        )
     else:
         Df = Df_boundary
 
@@ -91,7 +114,8 @@ def hybrid_hr_depth(
             "deep_available": True,
             "confidence_classical": Wc,
             "confidence_deep": Wd,
-            "fused": Df_boundary,
+            "fused": Df,
+            "fused_before_consistency": Df_boundary,
         }
     return Df
 
@@ -106,7 +130,8 @@ def ablations(lr_depth, hr_rgb, valid_mask=None, scale=4, deep_fn=None):
     Dc = classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
     Dd = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
 
-    Wc, Wd = estimate_confidence(Dc, Dd, lr_depth, valid_mask, rgb_f, scale)
+    op = forward_operator(scale, "bicubic")
+    Wc, Wd = estimate_confidence(Dc, Dd, lr_depth, valid_mask, rgb_f, scale, operator=op)
     confidence_fusion = fuse(Dc, Dd, Wc, Wd)
     confidence_boundary = refine_hybrid_depth(confidence_fusion, rgb_f)
 
@@ -114,8 +139,16 @@ def ablations(lr_depth, hr_rgb, valid_mask=None, scale=4, deep_fn=None):
         "classical": Dc,
         "deep": Dd,
         "deep_available": True,
-        "fixed_fusion": fuse_fixed(Dc, Dd, 0.5),
+        "dl_consistency": enforce_consistency(Dd, lr_depth, valid_mask, scale, operator=op, strength=0.25),
+        "fixed_fusion": fuse_fixed(Dc, Dd, 0.02),
+        "fixed_fusion_consistency": enforce_consistency(
+            fuse_fixed(Dc, Dd, 0.02), lr_depth, valid_mask, scale, operator=op, strength=0.25
+        ),
         "confidence_fusion": confidence_fusion,
         "confidence_boundary": confidence_boundary,
-        "final": enforce_consistency(confidence_boundary, lr_depth, valid_mask, scale),
+        "adaptive_fusion": confidence_fusion,
+        "adaptive_fusion_consistency": enforce_consistency(
+            confidence_fusion, lr_depth, valid_mask, scale, operator=op, strength=0.25
+        ),
+        "final": enforce_consistency(confidence_boundary, lr_depth, valid_mask, scale, operator=op, strength=0.25),
     }

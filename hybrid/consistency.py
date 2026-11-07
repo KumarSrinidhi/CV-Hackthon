@@ -17,8 +17,25 @@ import cv2
 import numpy as np
 
 
-def enforce_consistency(fused_hr, lr_depth, valid_mask=None, scale=4, operator=None):
-    """Project the fused HR depth onto the known measurements and return the corrected map."""
+def enforce_consistency(
+    fused_hr,
+    lr_depth,
+    valid_mask=None,
+    scale=4,
+    operator=None,
+    *,
+    strength=1.0,
+    iterations=1,
+):
+    """Apply damped measurement corrections using the supplied forward operator.
+
+    The residual is upsampled as an implementation approximation, not treated as an
+    exact projection. Invalid LR measurements are excluded on every iteration.
+    """
+    if not 0.0 <= strength <= 1.0:
+        raise ValueError("strength must be in [0, 1]")
+    if isinstance(iterations, bool) or not isinstance(iterations, (int, np.integer)) or iterations < 0:
+        raise ValueError("iterations must be a non-negative integer")
     Df = np.asarray(fused_hr, dtype=np.float32)
     lr = np.asarray(lr_depth, dtype=np.float32)
     H, W = Df.shape[:2]
@@ -35,13 +52,12 @@ def enforce_consistency(fused_hr, lr_depth, valid_mask=None, scale=4, operator=N
             mask = mask[..., 0]
         valid &= mask
 
-    s_fused = operator(Df)
-    if s_fused.shape != lr.shape:
-        raise ValueError(f"operator produced {s_fused.shape}, expected {lr.shape}")
-
-    residual_lr = np.where(valid, lr - s_fused, 0.0).astype(np.float32)
-    # Nearest (block-constant) upsampling keeps the correction constant within each
-    # LR block, so it anchors measurements without smearing intra-block depth edges.
-    residual_hr = cv2.resize(residual_lr, (W, H), interpolation=cv2.INTER_NEAREST)
-    corrected = Df + residual_hr
+    corrected = Df.copy()
+    for _ in range(iterations):
+        projected = np.asarray(operator(corrected), dtype=np.float32)
+        if projected.shape != lr.shape:
+            raise ValueError(f"operator produced {projected.shape}, expected {lr.shape}")
+        residual_lr = np.where(valid, lr - projected, 0.0).astype(np.float32)
+        residual_hr = cv2.resize(residual_lr, (W, H), interpolation=cv2.INTER_NEAREST)
+        corrected = corrected + np.float32(strength) * residual_hr
     return np.maximum(corrected, 0.0).astype(np.float32)

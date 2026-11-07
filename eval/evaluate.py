@@ -22,8 +22,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import importlib
 import json
+import os
 import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence
@@ -45,6 +47,16 @@ BRANCHES = {
     "deep": ("deep.inference", "deep_hr_depth"),
     "hybrid": ("hybrid.pipeline", "hybrid_hr_depth"),
 }
+HYBRID_VARIANTS = {
+    "dl_consistency": {"use_consistency": True, "classical_alpha": 0.0},
+    "fixed_fusion": {"use_consistency": False, "classical_alpha": 0.02},
+    "fixed_fusion_consistency": {"use_consistency": True, "classical_alpha": 0.02},
+    "adaptive_fusion": {"use_consistency": False, "adaptive": True},
+    "adaptive_fusion_consistency": {"use_consistency": True, "adaptive": True},
+    "adaptive_fusion_boundary": {
+        "use_consistency": True, "adaptive": True, "use_boundary_refinement": True,
+    },
+}
 _CV2 = {"nearest": cv2.INTER_NEAREST, "bilinear": cv2.INTER_LINEAR, "bicubic": cv2.INTER_CUBIC}
 
 
@@ -65,6 +77,38 @@ def _make_baseline(kind: str) -> Method:
 def load_method(name: str) -> Method:
     if name in BASELINES:
         return _make_baseline(name)
+    if name in HYBRID_VARIANTS:
+        from hybrid.pipeline import hybrid_hr_depth
+
+        kwargs = HYBRID_VARIANTS[name]
+        return lambda lr, rgb, mask, scale=4: hybrid_hr_depth(
+            lr, rgb, mask, scale, **kwargs
+        )
+    if name.startswith("dl_consistency_s"):
+        try:
+            strength_text, iteration_text = name.removeprefix("dl_consistency_s").split("_i")
+            strength = float(strength_text)
+            iterations = int(iteration_text)
+        except ValueError as exc:
+            raise MethodUnavailable(f"invalid consistency method '{name}'") from exc
+        from hybrid.pipeline import hybrid_hr_depth
+
+        return lambda lr, rgb, mask, scale=4: hybrid_hr_depth(
+            lr, rgb, mask, scale, classical_alpha=0.0, use_consistency=True,
+            consistency_strength=strength, consistency_iterations=iterations,
+        )
+    if name.startswith("fixed_") or name.startswith("fixed_consistency_"):
+        consistency = name.startswith("fixed_consistency_")
+        value = name.split("_")[-1]
+        try:
+            alpha = float(value)
+        except ValueError as exc:
+            raise MethodUnavailable(f"invalid fixed alpha method '{name}'") from exc
+        from hybrid.pipeline import hybrid_hr_depth
+
+        return lambda lr, rgb, mask, scale=4: hybrid_hr_depth(
+            lr, rgb, mask, scale, classical_alpha=alpha, use_consistency=consistency
+        )
     if name not in BRANCHES:
         raise MethodUnavailable(f"unknown method '{name}'")
     mod_name, fn_name = BRANCHES[name]
@@ -95,6 +139,7 @@ def evaluate_methods(
     rel_thresh: float = 0.03,
     methods: Optional[Dict[str, Method]] = None,
     verbose: bool = True,
+    cache_dir: Optional[str] = None,
 ) -> dict:
     """Return {'per_image': [...], 'summary': {...}, 'not_evaluated': {...}, 'meta': {...}}.
     ``methods`` lets callers inject callables (tests, mocks)."""
@@ -111,24 +156,57 @@ def evaluate_methods(
             not_eval[name] = str(e)
 
     rows: List[dict] = []
+    cache_root = Path(cache_dir) if cache_dir else None
+    checkpoint_path = Path(os.environ.get("SGNET_CKPT_X4", os.environ.get("SGNET_CKPT_DIR", "default")))
+    try:
+        checkpoint_identity = {
+            "path": str(checkpoint_path),
+            "size": checkpoint_path.stat().st_size,
+            "mtime_ns": checkpoint_path.stat().st_mtime_ns,
+        }
+    except OSError:
+        checkpoint_identity = {"path": str(checkpoint_path)}
+    cache_meta = {
+        "checkpoint": checkpoint_identity,
+        "scale": dataset.scale,
+        "preprocessing": "to_float_rgb/minmax_valid_fill_nearest",
+        "degradation": dataset.degradation.as_dict(),
+    }
     failures: Dict[str, List[str]] = {k: [] for k in callables}
     for i in range(n):
         s = dataset[i]
         gt, valid = s["depth_original"], s["valid_mask_original"]
         for name, fn in list(callables.items()):
             try:
-                _sync()
-                t0 = time.perf_counter()
-                pred = fn(s["lr_depth"].copy(), s["hr_rgb"].copy(), s["lr_valid_mask"].copy(), s["scale"])
-                _sync()
-                dt = (time.perf_counter() - t0) * 1000.0
+                cache_hit = False
+                cache_path = None
+                if cache_root is not None:
+                    digest = hashlib.sha256(json.dumps(
+                        {**cache_meta, "sample": s["name"], "method": name},
+                        sort_keys=True, default=str,
+                    ).encode()).hexdigest()[:24]
+                    cache_path = cache_root / f"{digest}.npy"
+                    if cache_path.exists():
+                        pred = np.load(cache_path)
+                        cache_hit = True
+                if not cache_hit:
+                    _sync()
+                    t0 = time.perf_counter()
+                    pred = fn(s["lr_depth"].copy(), s["hr_rgb"].copy(), s["lr_valid_mask"].copy(), s["scale"])
+                    _sync()
+                    dt = (time.perf_counter() - t0) * 1000.0
+                    if cache_path is not None:
+                        cache_root.mkdir(parents=True, exist_ok=True)
+                        np.save(cache_path, np.asarray(pred, dtype=np.float32))
+                else:
+                    dt = 0.0
                 pred = np.asarray(pred, dtype=np.float32)
                 if pred.shape != gt.shape:
                     raise ValueError(f"output shape {pred.shape} != expected {gt.shape}")
                 if not np.isfinite(pred).all():
                     raise ValueError("output contains NaN/Inf")
                 m = compute_all_metrics(pred, gt, s["data_range"], valid, border, rel_thresh)
-                rows.append({"sample": s["name"], "method": name, "latency_ms": dt, **m})
+                rows.append({"sample": s["name"], "method": name, "latency_ms": dt, "cache_hit": cache_hit, **m})
             except (NotImplementedError, TypeError) as e:
                 not_eval[name] = f"{type(e).__name__}: {e}"
                 callables.pop(name, None)
@@ -150,6 +228,22 @@ def evaluate_methods(
             entry[k] = float(fin.mean()) if fin.size else float("nan")
             entry[k + "_std"] = float(fin.std()) if fin.size else float("nan")
         entry["failures"] = failures.get(name, [])[:5]
+        if name != "deep":
+            paired = {
+                r["sample"]: r["rmse"] for r in mr
+            }
+            deep_rows = {r["sample"]: r["rmse"] for r in rows if r["method"] == "deep"}
+            common = [paired[k] - deep_rows[k] for k in paired.keys() & deep_rows.keys()]
+            if common:
+                diff = np.asarray(common, dtype=np.float64)
+                rng = np.random.default_rng(0)
+                samples = diff[rng.integers(0, len(diff), size=(2000, len(diff)))]
+                means = samples.mean(axis=1)
+                entry["rmse_diff_vs_deep"] = float(diff.mean())
+                entry["rmse_diff_vs_deep_bootstrap95"] = [
+                    float(np.quantile(means, 0.025)), float(np.quantile(means, 0.975))
+                ]
+                entry["win_rate_vs_deep"] = float(np.mean(diff < 0))
         summary[name] = entry
     first = dataset[0]
     return {
@@ -216,6 +310,7 @@ def main(argv=None) -> int:
     ap.add_argument("--hole-ratio", type=float, default=0.0)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="results")
+    ap.add_argument("--cache-dir", default=None, help="cache predictions keyed by sample/model/degradation metadata")
     ap.add_argument("--final", action="store_true", help="required for split test/full (no tuning allowed on them)")
     a = ap.parse_args(argv)
 
@@ -224,7 +319,7 @@ def main(argv=None) -> int:
     deg = DegradationConfig(noise_std=a.noise_std, hole_ratio=a.hole_ratio, seed=a.seed)
     ds = get_dataset(a.dataset, a.split, a.scale, a.root, deg)
     print(f"{ds.name}/{a.split} x{a.scale}: {len(ds)} samples")
-    res = evaluate_methods(ds, a.methods, a.max_samples)
+    res = evaluate_methods(ds, a.methods, a.max_samples, cache_dir=a.cache_dir)
     tag = f"{ds.name}_{a.split}_x{a.scale}" + ("_noisy" if a.noise_std else "") + ("_holes" if a.hole_ratio else "")
     paths = save_results(res, a.out, tag)
     print(summary_markdown(res))

@@ -70,8 +70,8 @@ D_f = W_c * D_c + W_d * D_d,   W_c + W_d == 1
 3. **RGB/depth edge agreement** — where an RGB edge agrees with a depth
    discontinuity (classical preferred).
 
-The fused map then gets boundary-aware refinement and, when the forward degradation
-operator is known, a measurement-consistency correction
+Boundary refinement is optional and disabled by default. When the forward degradation
+operator is known, the fused map can receive a configurable, damped measurement-consistency correction
 `r_LR = D_LR - S(D_f)`. See `docs/HYBRID_FUSION.md`.
 
 The weights are **normalized confidence scores, not calibrated probabilities**. A
