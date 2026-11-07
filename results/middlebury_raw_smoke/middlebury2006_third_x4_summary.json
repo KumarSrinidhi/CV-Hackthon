@@ -1,0 +1,77 @@
+{
+  "summary": {
+    "bicubic": {
+      "n_ok": 3,
+      "n_failed": 0,
+      "rmse": 1.1937218363780289,
+      "rmse_std": 0.38876477927213954,
+      "mae": 0.3977478028906028,
+      "mae_std": 0.17673477410310215,
+      "psnr": 37.48941174987545,
+      "psnr_std": 2.724048402963653,
+      "ssim": 0.9668267912525225,
+      "ssim_std": 0.016364032787117476,
+      "boundary_rmse": 3.52006389253916,
+      "boundary_rmse_std": 0.5135100052394515,
+      "edge_precision": 0.7987689488381532,
+      "edge_precision_std": 0.0180607469379141,
+      "edge_recall": 0.5593092914725187,
+      "edge_recall_std": 0.1799375376039607,
+      "edge_f1": 0.6411967852143627,
+      "edge_f1_std": 0.13039836603786212,
+      "latency_ms": 2.294400008395314,
+      "latency_ms_std": 1.487996986392191,
+      "failures": []
+    },
+    "deep": {
+      "n_ok": 3,
+      "n_failed": 0,
+      "rmse": 0.620782639474827,
+      "rmse_std": 0.2672743791905998,
+      "mae": 0.14687469007022844,
+      "mae_std": 0.0632597457716358,
+      "psnr": 43.47544552780307,
+      "psnr_std": 3.5132967943946247,
+      "ssim": 0.9928090758428656,
+      "ssim_std": 0.0040115827455035145,
+      "boundary_rmse": 1.7748830209632358,
+      "boundary_rmse_std": 0.4464154546542736,
+      "edge_precision": 0.9747747662255438,
+      "edge_precision_std": 0.0027239494852045218,
+      "edge_recall": 0.964778980300674,
+      "edge_recall_std": 0.026866800088487092,
+      "edge_f1": 0.9695743375573386,
+      "edge_f1_std": 0.01425122921555235,
+      "latency_ms": 1399.6653666642185,
+      "latency_ms_std": 741.3248047264663,
+      "failures": []
+    }
+  },
+  "not_evaluated": {},
+  "meta": {
+    "dataset": "middlebury2006_third_disparity",
+    "scale": 4,
+    "n_samples": 3,
+    "unit": "disparity_px",
+    "data_range": 85.0,
+    "border": 6,
+    "boundary_rel_thresh": 0.03,
+    "degradation": {
+      "mode": "bicubic",
+      "noise_std": 0.0,
+      "noise_relative": false,
+      "hole_ratio": 0.0,
+      "n_block_holes": 0,
+      "block_frac": 0.15,
+      "seed": 0
+    },
+    "split": "test",
+    "protocol": "Official 2006 ThirdSize, encoded disparity / 3",
+    "views": [
+      1
+    ],
+    "target": "disparity, not metric depth",
+    "invalid": "original disparity PNG == 0",
+    "comparison_note": "Separate protocol from prepared Middlebury/SGNet paper tables."
+  }
+}

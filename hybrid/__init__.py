@@ -1,4 +1,5 @@
-# Team Owner: Rishita
-# Workstream: Hybrid Fusion
-# Module: hybrid/__init__.py
+"""Hybrid depth reconstruction branch."""
 
+from .pipeline import hybrid_hr_depth, ablations
+
+__all__ = ["hybrid_hr_depth", "ablations"]
