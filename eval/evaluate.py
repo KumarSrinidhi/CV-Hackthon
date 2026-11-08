@@ -65,9 +65,12 @@ def _needs_deep_checkpoint(name: str) -> bool:
 
     Without the deep checkpoint the pipeline would return the classical output
     under a hybrid method name; such runs are reported as "not evaluated".
+    ``deep`` itself is pre-checked for the same honesty: a missing checkpoint
+    becomes a clean not-evaluated reason instead of per-sample failures.
     """
     return (
-        name in HYBRID_METHODS
+        name == "deep"
+        or name in HYBRID_METHODS
         or name in HYBRID_VARIANTS
         or name.startswith("dl_consistency_s")
         or name.startswith("fixed_")
