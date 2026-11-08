@@ -25,20 +25,28 @@ from .fusion import fuse, fuse_fixed
 
 
 def _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale):
-    """Lazy import + call of the real deep branch. Raises on unavailability."""
-    from deep.inference import deep_hr_depth as _deep
+    """Lazy import: use routed path when both checkpoints are present, else plain deep.
 
-    return _deep(lr_depth, hr_rgb, valid_mask, scale)
+    Returns (depth, route_info).  route_info is None when routing is unavailable.
+    Passes the ORIGINAL LR validity mask (before any hole filling).
+    """
+    try:
+        from deep.routing import deep_hr_depth_routed
+        return deep_hr_depth_routed(lr_depth, hr_rgb, valid_mask, scale)
+    except Exception:  # noqa: BLE001 -- routing env-vars not set; fall back to plain deep
+        from deep.inference import deep_hr_depth as _deep
+        return _deep(lr_depth, hr_rgb, valid_mask, scale), None
 
 
 def _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn):
-    """Return (depth, available) where available=False means deep was unavailable."""
+    """Return (depth, available, route_info) where available=False means deep was unavailable."""
     if deep_fn is not None:
-        return deep_fn(lr_depth, hr_rgb, valid_mask, scale), True
+        return deep_fn(lr_depth, hr_rgb, valid_mask, scale), True, None
     try:
-        return _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale), True
+        depth, route_info = _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
+        return depth, True, route_info
     except Exception:  # noqa: BLE001 -- deep branch is optional
-        return None, False
+        return None, False, None
 
 
 def hybrid_hr_depth(
@@ -78,7 +86,7 @@ def hybrid_hr_depth(
     rgb_f = to_float_rgb(np.asarray(hr_rgb))
 
     Dc = classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
-    Dd, deep_available = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
+    Dd, deep_available, route_info = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
 
     if deep_available:
         if classical_weight is None:
@@ -121,6 +129,7 @@ def hybrid_hr_depth(
             "classical": Dc,
             "deep": Dd if deep_available else None,
             "deep_available": deep_available,
+            "route_info": route_info,
             "confidence_classical": Wc,
             "confidence_deep": Wd,
             "fused": Df_boundary,

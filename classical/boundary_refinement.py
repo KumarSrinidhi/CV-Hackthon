@@ -33,7 +33,8 @@ def refine_boundaries(depth, reference, rgb, *, relative_jump=0.08, sigma_color=
         a = np.where(center_ref > 0, center_ref, depth[center])
         b = np.where(neighbor_ref > 0, neighbor_ref, depth[neighbor])
         compatible = (np.abs(a - b) <= relative_jump * np.maximum(a, b))
-        compatible &= (depth[center] > 0) & (depth[neighbor] > 0)
+        # Allow zero-depth pixels to receive weight from valid neighbors (one-sided gate).
+        compatible &= depth[neighbor] > 0
         distance = np.sum((rgb[center] - rgb[neighbor]) ** 2, axis=2)
         color = np.where(rgb_gate[center] | rgb_gate[neighbor],
                          np.exp(-distance / (2 * sigma_color**2)), 1)

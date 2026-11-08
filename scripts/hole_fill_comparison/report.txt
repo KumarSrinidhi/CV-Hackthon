@@ -1,0 +1,101 @@
+Classical pipeline: old vs new — hole-fill comparison
+Output directory: c:\Users\raksh\CV-Hackthon\scripts\hole_fill_comparison
+
+
+============================================================
+SAMPLE: sample_a
+============================================================
+  GT depth range:  [2.5000, 2.5000]
+  LR shape: (60, 80)  HR shape: (240, 320)  scale: x4
+  Hole pixels (LR): 108 / 4800  (2.2%)
+  Hole pixels (HR): 1728 / 76800  (2.2%)
+
+  --- depth min/max of predictions ---
+                                        min         max     zeros
+  GT                                 2.5000      2.5000         —
+  old                                0.0000      2.5000      1659
+  new_telea                          2.5000      2.5000         0
+  new_nearest                        2.5000      2.5000         0
+
+  --- RMSE by region ---
+  old                            inside_hole   RMSE=2.44958
+  new_telea                      inside_hole   RMSE=0.00000
+  new_nearest                    inside_hole   RMSE=0.00000
+
+  old                            outside_hole  RMSE=0.00000
+  new_telea                      outside_hole  RMSE=0.00000
+  new_nearest                    outside_hole  RMSE=0.00000
+
+  old                            boundary      RMSE=1.58466
+  new_telea                      boundary      RMSE=0.00000
+  new_nearest                    boundary      RMSE=0.00000
+
+  --- cv2.inpaint (Telea) inspection ---
+  input dtype:              float32  (float32 required by cv2.inpaint)
+  depth units preserved:    True  (normalise in, rescale out)
+  valid depth range:        [2.5000, 2.5000]
+  norm[~valid] set to:      0.0  (biases fill toward vmin at boundary)
+  filled_norm in hole:      [0.00000, 0.00000]
+  overshoot below 0:        0.000000
+  overshoot above 1:        0.000000
+  raw depth in hole:        [2.5000, 2.5000]
+  clipped depth in hole:    [2.5000, 2.5000]
+
+  --- JBU validity gate ---
+  splat pixels (valid_filled=True):  4696
+  seeded-but-not-valid pixels:       104
+  total LR pixels:                   4800
+  note: JBU iterates only over valid_filled=True pixels for
+        splatting. Seeded-but-not-valid pixels appear in the
+        nearest fallback map, so hole interiors receive the
+        seeded value via nearest, not via bilateral
+        weighting. This is correct behaviour.
+
+============================================================
+SAMPLE: sample_b
+============================================================
+  GT depth range:  [1.5000, 4.0000]
+  LR shape: (60, 80)  HR shape: (240, 320)  scale: x4
+  Hole pixels (LR): 156 / 4800  (3.2%)
+  Hole pixels (HR): 2496 / 76800  (3.2%)
+
+  --- depth min/max of predictions ---
+                                        min         max     zeros
+  GT                                 1.5000      4.0000         —
+  old                                0.0000      4.0317      2425
+  new_telea                          1.4683      4.0317         0
+  new_nearest                        1.4683      4.0317         0
+
+  --- RMSE by region ---
+  old                            inside_hole   RMSE=3.94270
+  new_telea                      inside_hole   RMSE=1.24637
+  new_nearest                    inside_hole   RMSE=0.00000
+
+  old                            outside_hole  RMSE=0.06267
+  new_telea                      outside_hole  RMSE=0.04342
+  new_nearest                    outside_hole  RMSE=0.04342
+
+  old                            boundary      RMSE=2.58199
+  new_telea                      boundary      RMSE=0.85809
+  new_nearest                    boundary      RMSE=0.00000
+
+  --- cv2.inpaint (Telea) inspection ---
+  input dtype:              float32  (float32 required by cv2.inpaint)
+  depth units preserved:    True  (normalise in, rescale out)
+  valid depth range:        [1.4683, 4.0317]
+  norm[~valid] set to:      0.0  (biases fill toward vmin at boundary)
+  filled_norm in hole:      [-0.33355, 2.34394]
+  overshoot below 0:        0.333552
+  overshoot above 1:        1.343937
+  raw depth in hole:        [0.6132, 7.4769]
+  clipped depth in hole:    [1.4683, 4.0317]
+
+  --- JBU validity gate ---
+  splat pixels (valid_filled=True):  4648
+  seeded-but-not-valid pixels:       152
+  total LR pixels:                   4800
+  note: JBU iterates only over valid_filled=True pixels for
+        splatting. Seeded-but-not-valid pixels appear in the
+        nearest fallback map, so hole interiors receive the
+        seeded value via nearest, not via bilateral
+        weighting. This is correct behaviour.

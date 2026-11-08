@@ -1,0 +1,320 @@
+{
+  "meta": {
+    "split": "val",
+    "scale": 4,
+    "start": 0,
+    "n": 30,
+    "border": 6,
+    "mean_eval_pixels": 293904.0,
+    "degradation": {
+      "mode": "bicubic",
+      "noise_std": 0.0,
+      "noise_relative": false,
+      "hole_ratio": 0.0,
+      "n_block_holes": 2,
+      "block_frac": 0.15,
+      "seed": 0
+    },
+    "eval_domain": "gt_base = vgt & isfinite(gt) with 6-px border zeroed; primary = gt_base & isfinite(pred); shared = gt_base & isfinite(Dc) & isfinite(Dd) [diagnostic only]"
+  },
+  "primary": {
+    "classical": {
+      "rmse": 0.07667376227232295,
+      "boundary_rmse": 0.3060743782839202,
+      "nonfinite_rate": 0.0,
+      "any_fail": false
+    },
+    "routed_deep": {
+      "rmse": 0.048439050846292415,
+      "boundary_rmse": 0.1393802409726526,
+      "nonfinite_rate": 0.0,
+      "any_fail": false
+    },
+    "raw_blend": {
+      "0.0": {
+        "rmse": 0.048439050846292415,
+        "boundary_rmse": 0.1393802409726526,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.01": {
+        "rmse": 0.048421030159591476,
+        "boundary_rmse": 0.13927936874420996,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.02": {
+        "rmse": 0.048412551684428665,
+        "boundary_rmse": 0.13925422803793466,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.05": {
+        "rmse": 0.048444314949541795,
+        "boundary_rmse": 0.1396323605598833,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.1": {
+        "rmse": 0.04868521869403852,
+        "boundary_rmse": 0.14172221990868838,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.2": {
+        "rmse": 0.04982556435742361,
+        "boundary_rmse": 0.15056264413173537,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.5": {
+        "rmse": 0.05720675116107825,
+        "boundary_rmse": 0.19852016614992335,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "1.0": {
+        "rmse": 0.07667376227232295,
+        "boundary_rmse": 0.3060743782839202,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      }
+    },
+    "fuse_prod": {
+      "0.0": {
+        "rmse": 0.048439050846292415,
+        "boundary_rmse": 0.1393802409726526,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.01": {
+        "rmse": 0.048421030159591476,
+        "boundary_rmse": 0.13927936874420996,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.02": {
+        "rmse": 0.048412551684428665,
+        "boundary_rmse": 0.13925422803793466,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.05": {
+        "rmse": 0.048444314949541795,
+        "boundary_rmse": 0.1396323605598833,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.1": {
+        "rmse": 0.04868521869403852,
+        "boundary_rmse": 0.14172221990868838,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.2": {
+        "rmse": 0.04982556435742361,
+        "boundary_rmse": 0.15056264413173537,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.5": {
+        "rmse": 0.05720675116107825,
+        "boundary_rmse": 0.19852016614992335,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "1.0": {
+        "rmse": 0.07667376227232295,
+        "boundary_rmse": 0.3060743782839202,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      }
+    },
+    "raw_blend_consistency": {
+      "0.0": {
+        "rmse": 0.048303362343903804,
+        "boundary_rmse": 0.1387071450619394,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.01": {
+        "rmse": 0.04828663188842699,
+        "boundary_rmse": 0.13861637282101535,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.02": {
+        "rmse": 0.04827764423949933,
+        "boundary_rmse": 0.13858892975140719,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.05": {
+        "rmse": 0.04829710845381553,
+        "boundary_rmse": 0.1388859136899299,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.1": {
+        "rmse": 0.04848250903215604,
+        "boundary_rmse": 0.14060752125439346,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.2": {
+        "rmse": 0.049395102608526885,
+        "boundary_rmse": 0.1480488197013202,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.5": {
+        "rmse": 0.0555119102651727,
+        "boundary_rmse": 0.18967025912400615,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "1.0": {
+        "rmse": 0.07217790936917004,
+        "boundary_rmse": 0.285122079895685,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      }
+    },
+    "best_alpha_raw_blend": 0.02,
+    "best_alpha_raw_blend_consistency": 0.02
+  },
+  "diagnostic_shared": {
+    "mean_eval_pixels": 293904.0,
+    "mean_dc_nonfinite_rate": 0.0,
+    "mean_dd_nonfinite_rate": 0.0,
+    "mean_shared_retention_frac": 1.0,
+    "classical": {
+      "rmse": 0.07667376227232295,
+      "boundary_rmse": 0.3060743782839202
+    },
+    "routed_deep": {
+      "rmse": 0.048439050846292415,
+      "boundary_rmse": 0.1393802409726526
+    },
+    "raw_blend": {
+      "0.0": {
+        "rmse": 0.048439050846292415,
+        "boundary_rmse": 0.1393802409726526
+      },
+      "0.01": {
+        "rmse": 0.048421030159591476,
+        "boundary_rmse": 0.13927936874420996
+      },
+      "0.02": {
+        "rmse": 0.048412551684428665,
+        "boundary_rmse": 0.13925422803793466
+      },
+      "0.05": {
+        "rmse": 0.048444314949541795,
+        "boundary_rmse": 0.1396323605598833
+      },
+      "0.1": {
+        "rmse": 0.04868521869403852,
+        "boundary_rmse": 0.14172221990868838
+      },
+      "0.2": {
+        "rmse": 0.04982556435742361,
+        "boundary_rmse": 0.15056264413173537
+      },
+      "0.5": {
+        "rmse": 0.05720675116107825,
+        "boundary_rmse": 0.19852016614992335
+      },
+      "1.0": {
+        "rmse": 0.07667376227232295,
+        "boundary_rmse": 0.3060743782839202
+      }
+    },
+    "fuse_prod": {
+      "0.0": {
+        "rmse": 0.048439050846292415,
+        "boundary_rmse": 0.1393802409726526
+      },
+      "0.01": {
+        "rmse": 0.048421030159591476,
+        "boundary_rmse": 0.13927936874420996
+      },
+      "0.02": {
+        "rmse": 0.048412551684428665,
+        "boundary_rmse": 0.13925422803793466
+      },
+      "0.05": {
+        "rmse": 0.048444314949541795,
+        "boundary_rmse": 0.1396323605598833
+      },
+      "0.1": {
+        "rmse": 0.04868521869403852,
+        "boundary_rmse": 0.14172221990868838
+      },
+      "0.2": {
+        "rmse": 0.04982556435742361,
+        "boundary_rmse": 0.15056264413173537
+      },
+      "0.5": {
+        "rmse": 0.05720675116107825,
+        "boundary_rmse": 0.19852016614992335
+      },
+      "1.0": {
+        "rmse": 0.07667376227232295,
+        "boundary_rmse": 0.3060743782839202
+      }
+    },
+    "raw_blend_consistency": {
+      "0.0": {
+        "rmse": 0.048303362343903804,
+        "boundary_rmse": 0.1387071450619394
+      },
+      "0.01": {
+        "rmse": 0.04828663188842699,
+        "boundary_rmse": 0.13861637282101535
+      },
+      "0.02": {
+        "rmse": 0.04827764423949933,
+        "boundary_rmse": 0.13858892975140719
+      },
+      "0.05": {
+        "rmse": 0.04829710845381553,
+        "boundary_rmse": 0.1388859136899299
+      },
+      "0.1": {
+        "rmse": 0.04848250903215604,
+        "boundary_rmse": 0.14060752125439346
+      },
+      "0.2": {
+        "rmse": 0.049395102608526885,
+        "boundary_rmse": 0.1480488197013202
+      },
+      "0.5": {
+        "rmse": 0.0555119102651727,
+        "boundary_rmse": 0.18967025912400615
+      },
+      "1.0": {
+        "rmse": 0.07217790936917004,
+        "boundary_rmse": 0.285122079895685
+      }
+    }
+  },
+  "border_crop_verification": {
+    "note": "Same Dd predictions recomputed with two border settings to confirm that the 4.844 cm vs 4.740 cm discrepancy is caused solely by the border crop and not by any change to the deep branch.",
+    "deep_rmse_border6_cm": 4.8439,
+    "deep_rmse_border0_cm": 4.7405,
+    "difference_cm": 0.1034,
+    "mean_eval_pixels_b6": 293904.0,
+    "mean_eval_pixels_b0": 307200.0
+  },
+  "route_counts": {
+    "robust": 30
+  },
+  "endpoint_invariants": {
+    "alpha0_max_diff": 0.0,
+    "alpha0_ok": true,
+    "alpha1_max_diff": 0.0,
+    "alpha1_ok": true
+  },
+  "mean_dc_nonpos_fraction": 0.0
+}

@@ -47,7 +47,9 @@ def test_empty_and_unresolved_support():
     depth[1, 1] = 4
     out = classical_hr_depth(depth, rgb, None, 2)
     assert out.max() == pytest.approx(4)
-    assert out[-1, -1] == 0
+    # With NN hole-filling the single valid pixel propagates everywhere;
+    # the corner is no longer zero (that was the bug).
+    assert out[-1, -1] > 0
 
 
 def test_boundary_refinement_preserves_step_and_rejects_rgb_only_edges():

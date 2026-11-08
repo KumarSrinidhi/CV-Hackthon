@@ -1,0 +1,310 @@
+{
+  "meta": {
+    "split": "val",
+    "scale": 4,
+    "start": 0,
+    "n": 30,
+    "degradation": {
+      "mode": "bicubic",
+      "noise_std": 0.0,
+      "noise_relative": false,
+      "hole_ratio": 0.0,
+      "n_block_holes": 2,
+      "block_frac": 0.15,
+      "seed": 0
+    },
+    "eval_domains": "primary=own mask (vgt & isfinite(gt) & isfinite(pred)); shared=diagnostic only (vgt & isfinite(gt) & isfinite(Dc) & isfinite(Dd))"
+  },
+  "primary": {
+    "classical": {
+      "rmse": 0.07518594537153961,
+      "boundary_rmse": 0.2887000916979766,
+      "nonfinite_rate": 0.0,
+      "any_fail": false
+    },
+    "routed_deep": {
+      "rmse": 0.04740468099825923,
+      "boundary_rmse": 0.1314859897923975,
+      "nonfinite_rate": 0.0,
+      "any_fail": false
+    },
+    "raw_blend": {
+      "0.0": {
+        "rmse": 0.04740468099825923,
+        "boundary_rmse": 0.1314859897923975,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.01": {
+        "rmse": 0.04738697709956823,
+        "boundary_rmse": 0.13139351560435436,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.02": {
+        "rmse": 0.0473786574003767,
+        "boundary_rmse": 0.13137253962583112,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.05": {
+        "rmse": 0.04740995096680262,
+        "boundary_rmse": 0.13173767570512637,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.1": {
+        "rmse": 0.047646985204836026,
+        "boundary_rmse": 0.13372270726975094,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.2": {
+        "rmse": 0.04876903433201751,
+        "boundary_rmse": 0.14208019680626857,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.5": {
+        "rmse": 0.05603326852126818,
+        "boundary_rmse": 0.1873040599394273,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "1.0": {
+        "rmse": 0.07518594537153961,
+        "boundary_rmse": 0.2887000916979766,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      }
+    },
+    "fuse_prod": {
+      "0.0": {
+        "rmse": 0.04740468099825923,
+        "boundary_rmse": 0.1314859897923975,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.01": {
+        "rmse": 0.04738697709956823,
+        "boundary_rmse": 0.13139351560435436,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.02": {
+        "rmse": 0.0473786574003767,
+        "boundary_rmse": 0.13137253962583112,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.05": {
+        "rmse": 0.04740995096680262,
+        "boundary_rmse": 0.13173767570512637,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.1": {
+        "rmse": 0.047646985204836026,
+        "boundary_rmse": 0.13372270726975094,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.2": {
+        "rmse": 0.04876903433201751,
+        "boundary_rmse": 0.14208019680626857,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.5": {
+        "rmse": 0.05603326852126818,
+        "boundary_rmse": 0.1873040599394273,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "1.0": {
+        "rmse": 0.07518594537153961,
+        "boundary_rmse": 0.2887000916979766,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      }
+    },
+    "raw_blend_consistency": {
+      "0.0": {
+        "rmse": 0.0472718269686356,
+        "boundary_rmse": 0.13083777421687612,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.01": {
+        "rmse": 0.04725537042508852,
+        "boundary_rmse": 0.1307539509898862,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.02": {
+        "rmse": 0.04724651654275217,
+        "boundary_rmse": 0.13072974803159923,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.05": {
+        "rmse": 0.04726554300494898,
+        "boundary_rmse": 0.13101416534379923,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.1": {
+        "rmse": 0.04744747450351794,
+        "boundary_rmse": 0.13264215728707704,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.2": {
+        "rmse": 0.048343735625115944,
+        "boundary_rmse": 0.13965518737194166,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "0.5": {
+        "rmse": 0.05435584641621533,
+        "boundary_rmse": 0.1788159971893708,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      },
+      "1.0": {
+        "rmse": 0.07073718326247219,
+        "boundary_rmse": 0.26863554084707764,
+        "nonfinite_rate": 0.0,
+        "any_fail": false
+      }
+    },
+    "best_alpha_raw_blend": 0.02,
+    "best_alpha_raw_blend_consistency": 0.02
+  },
+  "diagnostic_shared": {
+    "mean_valid_gt_pixels": 307200.0,
+    "mean_dc_nonfinite_rate": 0.0,
+    "mean_dd_nonfinite_rate": 0.0,
+    "mean_shared_retention_frac": 1.0,
+    "classical": {
+      "rmse": 0.07518594537153961,
+      "boundary_rmse": 0.2887000916979766
+    },
+    "routed_deep": {
+      "rmse": 0.04740468099825923,
+      "boundary_rmse": 0.1314859897923975
+    },
+    "raw_blend": {
+      "0.0": {
+        "rmse": 0.04740468099825923,
+        "boundary_rmse": 0.1314859897923975
+      },
+      "0.01": {
+        "rmse": 0.04738697709956823,
+        "boundary_rmse": 0.13139351560435436
+      },
+      "0.02": {
+        "rmse": 0.0473786574003767,
+        "boundary_rmse": 0.13137253962583112
+      },
+      "0.05": {
+        "rmse": 0.04740995096680262,
+        "boundary_rmse": 0.13173767570512637
+      },
+      "0.1": {
+        "rmse": 0.047646985204836026,
+        "boundary_rmse": 0.13372270726975094
+      },
+      "0.2": {
+        "rmse": 0.04876903433201751,
+        "boundary_rmse": 0.14208019680626857
+      },
+      "0.5": {
+        "rmse": 0.05603326852126818,
+        "boundary_rmse": 0.1873040599394273
+      },
+      "1.0": {
+        "rmse": 0.07518594537153961,
+        "boundary_rmse": 0.2887000916979766
+      }
+    },
+    "fuse_prod": {
+      "0.0": {
+        "rmse": 0.04740468099825923,
+        "boundary_rmse": 0.1314859897923975
+      },
+      "0.01": {
+        "rmse": 0.04738697709956823,
+        "boundary_rmse": 0.13139351560435436
+      },
+      "0.02": {
+        "rmse": 0.0473786574003767,
+        "boundary_rmse": 0.13137253962583112
+      },
+      "0.05": {
+        "rmse": 0.04740995096680262,
+        "boundary_rmse": 0.13173767570512637
+      },
+      "0.1": {
+        "rmse": 0.047646985204836026,
+        "boundary_rmse": 0.13372270726975094
+      },
+      "0.2": {
+        "rmse": 0.04876903433201751,
+        "boundary_rmse": 0.14208019680626857
+      },
+      "0.5": {
+        "rmse": 0.05603326852126818,
+        "boundary_rmse": 0.1873040599394273
+      },
+      "1.0": {
+        "rmse": 0.07518594537153961,
+        "boundary_rmse": 0.2887000916979766
+      }
+    },
+    "raw_blend_consistency": {
+      "0.0": {
+        "rmse": 0.0472718269686356,
+        "boundary_rmse": 0.13083777421687612
+      },
+      "0.01": {
+        "rmse": 0.04725537042508852,
+        "boundary_rmse": 0.1307539509898862
+      },
+      "0.02": {
+        "rmse": 0.04724651654275217,
+        "boundary_rmse": 0.13072974803159923
+      },
+      "0.05": {
+        "rmse": 0.04726554300494898,
+        "boundary_rmse": 0.13101416534379923
+      },
+      "0.1": {
+        "rmse": 0.04744747450351794,
+        "boundary_rmse": 0.13264215728707704
+      },
+      "0.2": {
+        "rmse": 0.048343735625115944,
+        "boundary_rmse": 0.13965518737194166
+      },
+      "0.5": {
+        "rmse": 0.05435584641621533,
+        "boundary_rmse": 0.1788159971893708
+      },
+      "1.0": {
+        "rmse": 0.07073718326247219,
+        "boundary_rmse": 0.26863554084707764
+      }
+    }
+  },
+  "route_counts": {
+    "robust": 30
+  },
+  "endpoint_invariants": {
+    "alpha0_max_diff": 0.0,
+    "alpha0_ok": true,
+    "alpha1_max_diff": 0.0,
+    "alpha1_ok": true
+  },
+  "mean_dc_nonpos_fraction": 0.0
+}

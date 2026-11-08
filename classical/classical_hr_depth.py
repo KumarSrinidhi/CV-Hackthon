@@ -86,19 +86,24 @@ def classical_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4):
     depth, rgb = _validate(lr_depth, hr_rgb, valid_mask, scale)
     rgb_f = to_float_rgb(rgb)
 
-    # A1: validity-aware hole filling
-    from .hole_filling import fill_small_holes, prepare_depth
+    # A1: validity-aware hole filling (small holes only; original valid mask preserved)
+    from .hole_filling import fill_small_holes, fill_holes_nn, prepare_depth
     depth_prep, valid = prepare_depth(depth, valid_mask)
     depth_filled, valid_filled = fill_small_holes(depth_prep, valid)
 
-    # A2: bicubic initial upsampling
+    # A1b: NN-fill any remaining large holes so A2/A3/A4 never see zeros inside holes.
+    # valid_filled is NOT updated — it still reflects only real measurements + small fills.
+    depth_seeded = fill_holes_nn(depth_filled, valid_filled) if not valid_filled.all() else depth_filled
+
+    # A2: bicubic initial upsampling on the fully-seeded LR map
     from .interpolation import interpolate_depth
-    upsampled = interpolate_depth(depth_filled, valid_filled, scale, "bicubic")
+    upsampled = interpolate_depth(depth_seeded, None, scale, "bicubic")
 
-    # A3: JBU RGB-guided reconstruction
-    import cv2
-    upsampled_lr = cv2.resize(upsampled, (depth.shape[1], depth.shape[0]), interpolation=cv2.INTER_AREA)
-    jbu_out = joint_bilateral_upsample(upsampled_lr, valid_filled, rgb_f, radius=1)
+    # A3: JBU RGB-guided reconstruction; seed from upsampled (no zeros), guide with valid_filled
+    jbu_out = joint_bilateral_upsample(depth_seeded, valid_filled, rgb_f, radius=1)
 
-    # A4: boundary-aware refinement
-    return refine_boundaries(jbu_out, jbu_out, rgb_f)
+    # A4: boundary-aware refinement; start from JBU, use upsampled as a smooth prior for holes
+    out = refine_boundaries(jbu_out, jbu_out, rgb_f)
+    # Pixels that JBU left at zero (no valid LR neighbor within radius) fall back to bicubic seed.
+    out = np.where(out > 0, out, upsampled)
+    return out
