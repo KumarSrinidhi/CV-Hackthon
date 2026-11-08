@@ -106,8 +106,6 @@ def upsample_masked_depth(depth, measured, rgb, scale):
     if not measured.any():
         return np.zeros(rgb.shape[:2], dtype=np.float32)
 
-    from data.preprocessing import fill_invalid_nearest
-
     filled = fill_invalid_nearest(depth, measured)
     result = upsample_dense_depth(filled, rgb, scale, measured)
 

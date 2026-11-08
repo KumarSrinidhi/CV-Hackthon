@@ -136,10 +136,19 @@ def edge_scores(pred, gt, data_range: float, valid=None, border: int = DEFAULT_B
 def compute_all_metrics(
     pred, gt, data_range: float, valid=None, border: int = DEFAULT_BORDER,
     rel_thresh: float = 0.03, boundary_radius: int = 2, edge_tol: int = 1,
+    hole_mask: Optional[np.ndarray] = None,
 ) -> Dict[str, float]:
-    """All required metrics on one shared mask. Keys: rmse, mae, psnr, ssim, boundary_rmse,
-    edge_precision, edge_recall, edge_f1."""
-    pred = np.asarray(pred, dtype=np.float32)
+    """All required metrics on one shared mask. Keys: rmse, mae, psnr, ssim,
+    boundary_rmse, edge_precision, edge_recall, edge_f1, absrel, delta1,
+    rmse_hole.
+
+    Predictions are clamped to ``[0, data_range]`` before scoring (methodology
+    A5). ``absrel`` / ``delta1`` are restricted to ``gt > 0`` pixels of the
+    shared mask. ``rmse_hole`` restricts the mask to ``hole_mask`` (e.g. HR
+    pixels whose source LR pixel was invalid) and is NaN when no hole mask is
+    given or the intersection is empty.
+    """
+    pred = np.clip(np.asarray(pred, dtype=np.float32), 0.0, data_range)
     gt = np.asarray(gt, dtype=np.float32)
     m = eval_mask(pred, gt, valid, border)
     out = {
@@ -150,4 +159,22 @@ def compute_all_metrics(
         "boundary_rmse": boundary_rmse(pred, gt, data_range, rel_thresh=rel_thresh, radius=boundary_radius, mask=m),
     }
     out.update(edge_scores(pred, gt, data_range, rel_thresh=rel_thresh, tol=edge_tol, mask=m))
+    pos = m & (gt > 0)
+    if pos.any():
+        p = pred[pos].astype(np.float64)
+        g = gt[pos].astype(np.float64)
+        out["absrel"] = float(np.mean(np.abs(p - g) / g))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ratio = np.where(p > 0, np.maximum(p / g, g / np.maximum(p, 1e-12)), np.inf)
+        out["delta1"] = float(np.mean(ratio < 1.25))
+    else:
+        out["absrel"] = float("nan")
+        out["delta1"] = float("nan")
+    if hole_mask is None:
+        out["rmse_hole"] = float("nan")
+    else:
+        hm = np.asarray(hole_mask, dtype=bool)
+        if hm.shape != gt.shape:
+            raise ValueError(f"hole mask {hm.shape} != gt {gt.shape}")
+        out["rmse_hole"] = rmse(pred, gt, mask=m & hm)
     return out

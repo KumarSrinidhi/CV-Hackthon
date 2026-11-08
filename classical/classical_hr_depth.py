@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 
 from .boundary_refinement import refine_boundaries
-from .edge_upsampling import upsample_dense_depth, upsample_masked_depth
+from .edge_upsampling import upsample_blend_depth, upsample_dense_depth, upsample_masked_depth
 from .guided_filter import guided_filter
 from .hole_filling import prepare_depth
 from .interpolation import interpolate_depth
@@ -88,7 +88,6 @@ def reconstruct(lr_depth, hr_rgb, valid_mask=None, scale=4, method="jbu"):
         if scale == 1:
             d, _ = prepare_depth(depth, valid_mask)
             return d
-        from .edge_upsampling import upsample_blend_depth
         return upsample_blend_depth(depth, valid_mask, rgb_f, scale)
 
     raise ValueError(f"Unknown reconstruction method: {method!r}.")

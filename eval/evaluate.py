@@ -40,7 +40,8 @@ from data.preprocessing import fill_invalid_nearest
 from .metrics import DEFAULT_BORDER, compute_all_metrics
 
 Method = Callable[[np.ndarray, np.ndarray, np.ndarray, int], np.ndarray]
-METRIC_KEYS = ["rmse", "mae", "psnr", "ssim", "boundary_rmse", "edge_precision", "edge_recall", "edge_f1"]
+METRIC_KEYS = ["rmse", "mae", "psnr", "ssim", "boundary_rmse", "edge_precision",
+               "edge_recall", "edge_f1", "absrel", "delta1", "rmse_hole"]
 BASELINES = ("nearest", "bilinear", "bicubic")
 BRANCHES = {
     "classical": ("classical.pipeline", "classical_hr_depth"),
@@ -218,6 +219,13 @@ def evaluate_methods(
     for i in range(n):
         s = dataset[i]
         gt, valid = s["depth_original"], s["valid_mask_original"]
+        hole_hr = None
+        lr_valid = s.get("lr_valid_mask")
+        if lr_valid is not None and not np.all(lr_valid):
+            sc = int(s["scale"])
+            rep = np.repeat(np.repeat(~np.asarray(lr_valid, dtype=bool), sc, axis=0), sc, axis=1)
+            if rep.shape == gt.shape:
+                hole_hr = rep
         for name, fn in list(callables.items()):
             try:
                 cache_hit = False
@@ -247,7 +255,8 @@ def evaluate_methods(
                     raise ValueError(f"output shape {pred.shape} != expected {gt.shape}")
                 if not np.isfinite(pred).all():
                     raise ValueError("output contains NaN/Inf")
-                m = compute_all_metrics(pred, gt, s["data_range"], valid, border, rel_thresh)
+                m = compute_all_metrics(pred, gt, s["data_range"], valid, border, rel_thresh,
+                                        hole_mask=hole_hr)
                 rows.append({"sample": s["name"], "method": name, "latency_ms": dt, "cache_hit": cache_hit, **m})
             except (NotImplementedError, TypeError) as e:
                 not_eval[name] = f"{type(e).__name__}: {e}"
@@ -323,20 +332,25 @@ def save_results(res: dict, out_dir: str, tag: str) -> Dict[str, Path]:
 def summary_markdown(res: dict) -> str:
     m = res["meta"]
     unit = {"m": "m", "8bit": "grey levels", "normalized": "normalised"}.get(m["unit"], m["unit"])
+
+    def fmt(v, nd):
+        return f"{v:.{nd}f}" if np.isfinite(v) else "-"
+
     lines = [
         f"### {m['dataset']} / {m['split']} / x{m['scale']}  (n={m['n_samples']}, unit={unit}, "
         f"data_range={m['data_range']}, border={m['border']}px, degradation={m['degradation']})",
         "",
-        "| method | RMSE | MAE | PSNR | SSIM | boundary RMSE | edge F1 | latency ms |",
-        "|---|---|---|---|---|---|---|---|",
+        "| method | RMSE | MAE | absRel | delta1 | RMSE-hole | PSNR | SSIM | boundary RMSE | edge F1 | latency ms |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for name, e in res["summary"].items():
         lines.append(
-            f"| {name} | {e['rmse']:.4f} | {e['mae']:.4f} | {e['psnr']:.2f} | {e['ssim']:.4f} | "
+            f"| {name} | {fmt(e['rmse'], 4)} | {fmt(e['mae'], 4)} | {fmt(e['absrel'], 4)} | "
+            f"{fmt(e['delta1'], 3)} | {fmt(e['rmse_hole'], 4)} | {e['psnr']:.2f} | {e['ssim']:.4f} | "
             f"{e['boundary_rmse']:.4f} | {e['edge_f1']:.3f} | {e['latency_ms']:.1f} |"
         )
     for name, why in res["not_evaluated"].items():
-        lines.append(f"| {name} | not evaluated | | | | | | {why} |")
+        lines.append(f"| {name} | not evaluated | | | | | | | | | {why} |")
     return "\n".join(lines) + "\n"
 
 

@@ -180,6 +180,30 @@ def test_metrics_mask_and_border(synth):
         M.rmse(gt[:-1], gt)
 
 
+def test_absrel_delta1_clamp_and_rmse_hole(synth):
+    gt = synth["depth"]
+    m = M.compute_all_metrics(gt, gt, 10.0)
+    assert m["absrel"] == 0.0 and m["delta1"] == 1.0 and np.isnan(m["rmse_hole"])
+    m = M.compute_all_metrics(gt * 2, gt, 10.0)  # ratio 2 -> delta1 fails
+    assert m["absrel"] == pytest.approx(1.0, abs=1e-6)
+    assert m["delta1"] == 0.0
+    # predictions are clamped to [0, data_range] before scoring (methodology A5)
+    m = M.compute_all_metrics(np.full_like(gt, -5.0), gt, 10.0)
+    assert m["rmse"] == pytest.approx(M.rmse(np.zeros_like(gt), gt))
+    m = M.compute_all_metrics(np.full_like(gt, 999.0), gt, 10.0)
+    assert m["rmse"] == pytest.approx(M.rmse(np.full_like(gt, 10.0), gt))
+    # hole-band RMSE restricts to the given mask
+    hole = np.zeros_like(gt, bool)
+    hole[10:20, 10:20] = True
+    pred = gt.copy()
+    pred[10:20, 10:20] += 1.0
+    m = M.compute_all_metrics(pred, gt, 10.0, hole_mask=hole)
+    assert m["rmse_hole"] == pytest.approx(1.0)
+    assert m["rmse"] > 0
+    with pytest.raises(ValueError, match="hole"):
+        M.compute_all_metrics(pred, gt, 10.0, hole_mask=hole[:-1])
+
+
 def test_boundary_and_edge_metrics_see_blur(synth):
     import cv2
     gt = synth["depth"]
