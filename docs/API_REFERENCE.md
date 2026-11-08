@@ -36,7 +36,8 @@ hybrid_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4, *,
                 use_consistency=True, consistency_strength=0.25, consistency_iterations=1,
                 classical_weight=None, classical_alpha=None,
                 use_refinement=False, use_boundary_refinement=None,
-                adaptive=True, max_classical_weight=0.35, operator=None,
+                adaptive=True, max_classical_weight=0.35,
+                hole_classical_weight=0.5, operator=None,
                 deep_fn=None, return_intermediates=False,
                 fusion="v2", skip_classical=None) -> (H, W) float32
 ```

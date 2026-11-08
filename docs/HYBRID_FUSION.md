@@ -34,6 +34,14 @@ higher HR accuracy. `adaptive=False` disables the gate and gives the deep branch
 zero-alpha behavior. Invalid deep pixels still force classical fallback for
 safety.
 
+One band is exempt from the conservative cap: around missing LR measurements
+(the dilated hole footprint), the classical weight may rise to
+`hole_classical_weight` (default `0.5`). The deep input is nearest-filled across
+holes, so its prediction is unreliable exactly there, while the classical masked
+reconstruction stays anchored to real measurements. The band only applies where
+the classical output is itself supported (finite and > 0), and only in the
+adaptive path.
+
 ## Boundary refinement
 
 Boundary refinement uses depth discontinuities as primary evidence and RGB as

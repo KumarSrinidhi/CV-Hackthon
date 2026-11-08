@@ -122,6 +122,7 @@ def hybrid_hr_depth(
     refinement_strength=1.0,
     adaptive=True,
     max_classical_weight=0.35,
+    hole_classical_weight=0.5,
     operator=None,
     deep_fn=None,
     return_intermediates=False,
@@ -213,6 +214,7 @@ def hybrid_hr_depth(
         Wc, Wd = estimate_confidence(
             Dc, Dd, lr_depth, valid_mask, rgb_f, scale,
             adaptive=adaptive, max_classical_weight=max_classical_weight,
+            hole_classical_weight=hole_classical_weight,
             operator=operator,
         )
         Df = fuse(Dc, Dd, Wc, Wd)

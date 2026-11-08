@@ -73,6 +73,13 @@ def test_fuse_invalid_classical_uses_deep():
     np.testing.assert_allclose(fuse(Dc, Dd, weights, weights), 4.0)
 
 
+def test_fuse_both_invalid_returns_zero():
+    Dc = np.zeros((2, 2), np.float32)
+    Dd = np.full((2, 2), np.nan, np.float32)
+    weights = np.full((2, 2), 0.5, np.float32)
+    np.testing.assert_array_equal(fuse(Dc, Dd, weights, weights), 0.0)
+
+
 def test_fuse_fixed_weight():
     Dc = np.full((2, 2), 2.0, np.float32)
     Dd = np.full((2, 2), 6.0, np.float32)
@@ -135,7 +142,12 @@ def test_consistency_uses_exact_operator_and_is_configurable():
         enforce_consistency(fused, lr, None, 2, operator=op, iterations=-1)
 
 
-def test_consistency_sweep_method_name_is_supported():
+def test_consistency_sweep_method_name_is_supported(monkeypatch):
+    # Hermetic: exercises the method-name parsing, not checkpoint availability.
+    monkeypatch.setattr(
+        "hybrid.pipeline._deep_hr_depth",
+        lambda lr, rgb, mask, scale: np.full((16, 16), 2.0, np.float32),
+    )
     method = load_method("dl_consistency_s0.25_i2")
     out = method(
         np.full((4, 4), 2.0, np.float32),
@@ -235,3 +247,56 @@ def test_consistency_strength_zero_is_identity():
         consistency_strength=0.0, deep_fn=_fake_deep(3.0)
     )
     np.testing.assert_allclose(out_no_cons, out_zero, atol=1e-5)
+
+
+def test_confidence_prefers_classical_near_holes():
+    # One missing LR measurement: the deep input is nearest-filled there, so the
+    # classical branch must gain weight in that band (wherever it is supported).
+    lr = np.full((4, 4), 2.0, np.float32)
+    lr[1, 1] = 0.0
+    Dc = np.full((16, 16), 2.0, np.float32)
+    Dd = np.full((16, 16), 5.0, np.float32)
+    Wc, Wd = estimate_confidence(
+        Dc, Dd, lr, None, np.zeros((16, 16, 3), np.float32), 4
+    )
+    np.testing.assert_allclose(Wc + Wd, 1.0, atol=1e-6)
+    # Hole at LR (1,1) -> HR block [4:8, 4:8]; its 3x3 LR dilation covers
+    # HR [0:12, 0:12], so the far corner is the clean comparison region.
+    assert Wc[4:8, 4:8].mean() > Wc[12:16, 12:16].mean()
+
+
+def test_confidence_hole_weight_requires_classical_support():
+    lr = np.full((4, 4), 2.0, np.float32)
+    lr[1, 1] = 0.0
+    Dc = np.zeros((16, 16), np.float32)  # classical has nothing to offer
+    Dd = np.full((16, 16), 5.0, np.float32)
+    Wc, Wd = estimate_confidence(
+        Dc, Dd, lr, None, np.zeros((16, 16, 3), np.float32), 4
+    )
+    np.testing.assert_allclose(Wc, 0.0)
+    np.testing.assert_allclose(Wd, 1.0)
+
+
+def test_confidence_no_holes_no_extra_classical_weight():
+    # Dense measurement grid: the hole band must not fire at all.
+    lr = np.full((4, 4), 2.0, np.float32)
+    Dc = np.full((16, 16), 2.0, np.float32)
+    Dd = np.full((16, 16), 5.0, np.float32)
+    Wc, _ = estimate_confidence(
+        Dc, Dd, lr, None, np.zeros((16, 16, 3), np.float32), 4
+    )
+    assert Wc.max() <= 0.1 + 1e-6
+
+
+def test_hybrid_hole_band_uses_classical_measurements():
+    lr = np.full((4, 4), 2.0, np.float32)
+    lr[1, 1] = 0.0
+    rgb = np.zeros((16, 16, 3), np.float32)
+    out, inter = hybrid_hr_depth(
+        lr, rgb, None, 4, deep_fn=_fake_deep(9.0), return_intermediates=True,
+        use_consistency=False,
+    )
+    # Deep says 9 everywhere; near the hole the classical value 2 must pull the
+    # result below the pure deep value.
+    assert out[8, 8] < 9.0
+    assert inter["confidence_classical"][8, 8] > 0.0

@@ -67,6 +67,7 @@ def estimate_confidence(
     adaptive=True,
     max_classical_weight=0.35,
     operator=None,
+    hole_classical_weight=0.5,
 ) -> tuple:
     """Return normalized branch weights.
 
@@ -74,10 +75,15 @@ def estimate_confidence(
     depth/RGB edge agreement and a measurement residual, rather than treating an RGB
     edge or a low residual as proof of higher HR accuracy.  ``adaptive=False`` is the
     zero-classical ablation (apart from invalid deep predictions).
-    ``max_classical_weight`` caps the classical contribution in [0, 1].
+    ``max_classical_weight`` caps the classical contribution in [0, 1] outside the
+    hole band; ``hole_classical_weight`` caps it inside the band around missing LR
+    measurements, where the deep input is nearest-filled and therefore unreliable
+    (and only where the classical output is itself supported).
     """
     if not 0.0 <= max_classical_weight <= 1.0:
         raise ValueError("max_classical_weight must be in [0, 1]")
+    if not 0.0 <= hole_classical_weight <= 1.0:
+        raise ValueError("hole_classical_weight must be in [0, 1]")
     Dc = np.asarray(classical_depth, dtype=np.float32)
     Dd = np.asarray(deep_depth, dtype=np.float32)
     if Dc.shape != Dd.shape:
@@ -116,6 +122,26 @@ def estimate_confidence(
         advantage_gate = np.clip((advantage - 0.15) / 0.85, 0.0, 1.0)
         wc = 0.01 + (cap - 0.01) * boundary_support * advantage_gate
         wc = np.clip(wc, 0.0, cap).astype(np.float32)
+
+        # Hole band: the deep input is nearest-filled across missing LR
+        # measurements, so its prediction is unreliable exactly there, while the
+        # classical masked reconstruction stays anchored to real measurements.
+        if valid.any() and not valid.all():
+            hole_lr = cv2.dilate(
+                (~valid).astype(np.uint8), np.ones((3, 3), np.uint8)
+            ).astype(bool)
+        else:
+            hole_lr = np.zeros_like(valid)
+        hole_zone = cv2.resize(
+            hole_lr.astype(np.float32), (W, H), interpolation=cv2.INTER_NEAREST
+        )
+        classical_supported = np.isfinite(Dc) & (Dc > 0)
+        wc = np.maximum(
+            wc,
+            (float(hole_classical_weight) * hole_zone * classical_supported).astype(
+                np.float32
+            ),
+        )
     else:
         wc = np.zeros((H, W), np.float32)
 
