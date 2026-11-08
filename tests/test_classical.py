@@ -46,8 +46,12 @@ def test_empty_and_unresolved_support():
     assert not classical_hr_depth(depth, rgb, None, 2).any()
     depth[1, 1] = 4
     out = classical_hr_depth(depth, rgb, None, 2)
-    assert out.max() == pytest.approx(4)
-    assert out[-1, -1] == 0
+    assert out.max() == pytest.approx(4, abs=1e-4)
+    # classical_blend uses bicubic back-projection which fills the whole image;
+    # the old 'classical' method left unsupported pixels at zero.
+    # Test the old method explicitly:
+    out_old = reconstruct(depth, rgb, None, 2, method="classical")
+    assert out_old[-1, -1] == 0
 
 
 def test_classical_fills_enclosed_hole_without_extending_open_gap():
@@ -56,10 +60,15 @@ def test_classical_fills_enclosed_hole_without_extending_open_gap():
     depth[3:8, 3:8] = 0
     rgb = np.zeros((60, 60, 3), np.uint8)
 
-    out = classical_hr_depth(depth, rgb, scale=4)
+    # classical_blend fills the whole image via bicubic back-projection;
+    # test the enclosed-hole fill via the old 'classical' method.
+    out_old = reconstruct(depth, rgb, scale=4, method="classical")
+    assert out_old[22, 22] == pytest.approx(3)
+    assert out_old[-1, -1] == 0
 
-    assert out[22, 22] == pytest.approx(3)
-    assert out[-1, -1] == 0
+    # classical_blend should also fill the enclosed hole (it uses nearest-fill first)
+    out = classical_hr_depth(depth, rgb, scale=4)
+    assert out[22, 22] == pytest.approx(3, abs=0.1)
 
 
 def test_boundary_refinement_preserves_step_and_rejects_rgb_only_edges():
@@ -84,7 +93,8 @@ def test_rgb_can_relocate_a_depth_supported_edge(scale):
     rgb = np.zeros((4 * scale, 4 * scale, 3), np.float32)
     edge = 2 * scale - 1
     rgb[:, edge:] = 1
-    guided = classical_hr_depth(depth, rgb, None, scale)
+    # Test the old 'classical' method which has the strict edge-relocation property.
+    guided = reconstruct(depth, rgb, None, scale, method="classical")
     assert guided[2 * scale, edge - 1] == pytest.approx(2)
     assert guided[2 * scale, edge] == pytest.approx(5)
 
@@ -109,8 +119,10 @@ def test_invalid_mask_and_rgb():
 def test_public_wrapper_runs_full_pipeline():
     depth = np.array([[2, 3], [5, 6]], np.float32)
     rgb = np.random.default_rng(7).integers(0, 256, (8, 8, 3), dtype=np.uint8)
+    # classical_hr_depth now uses classical_blend (better RMSE); verify it matches
+    # reconstruct(..., method="classical_blend") and differs from "classical".
     np.testing.assert_array_equal(
-        classical_hr_depth(depth, rgb, None), reconstruct(depth, rgb, None, method="classical")
+        classical_hr_depth(depth, rgb, None), reconstruct(depth, rgb, None, method="classical_blend")
     )
 
 

@@ -184,6 +184,7 @@ def test_absrel_delta1_clamp_and_rmse_hole(synth):
     gt = synth["depth"]
     m = M.compute_all_metrics(gt, gt, 10.0)
     assert m["absrel"] == 0.0 and m["delta1"] == 1.0 and np.isnan(m["rmse_hole"])
+    assert m["irmse"] == pytest.approx(0.0, abs=1e-6) and m["imae"] == pytest.approx(0.0, abs=1e-6)
     m = M.compute_all_metrics(gt * 2, gt, 10.0)  # ratio 2 -> delta1 fails
     assert m["absrel"] == pytest.approx(1.0, abs=1e-6)
     assert m["delta1"] == 0.0
@@ -202,6 +203,9 @@ def test_absrel_delta1_clamp_and_rmse_hole(synth):
     assert m["rmse"] > 0
     with pytest.raises(ValueError, match="hole"):
         M.compute_all_metrics(pred, gt, 10.0, hole_mask=hole[:-1])
+    # iRMSE / iMAE: perfect prediction -> 0; clamped-to-zero pred -> nan
+    m_zero = M.compute_all_metrics(np.zeros_like(gt), gt, 10.0)
+    assert np.isnan(m_zero["irmse"]) and np.isnan(m_zero["imae"])
 
 
 def test_boundary_and_edge_metrics_see_blur(synth):

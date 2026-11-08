@@ -41,7 +41,7 @@ from .metrics import DEFAULT_BORDER, compute_all_metrics
 
 Method = Callable[[np.ndarray, np.ndarray, np.ndarray, int], np.ndarray]
 METRIC_KEYS = ["rmse", "mae", "psnr", "ssim", "boundary_rmse", "edge_precision",
-               "edge_recall", "edge_f1", "absrel", "delta1", "rmse_hole"]
+               "edge_recall", "edge_f1", "absrel", "delta1", "rmse_hole", "irmse", "imae"]
 BASELINES = ("nearest", "bilinear", "bicubic")
 BRANCHES = {
     "classical": ("classical.pipeline", "classical_hr_depth"),
@@ -340,17 +340,19 @@ def summary_markdown(res: dict) -> str:
         f"### {m['dataset']} / {m['split']} / x{m['scale']}  (n={m['n_samples']}, unit={unit}, "
         f"data_range={m['data_range']}, border={m['border']}px, degradation={m['degradation']})",
         "",
-        "| method | RMSE | MAE | absRel | delta1 | RMSE-hole | PSNR | SSIM | boundary RMSE | edge F1 | latency ms |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "| method | RMSE | MAE | absRel | delta1 | iRMSE | iMAE | RMSE-hole | PSNR | SSIM | boundary RMSE | edge F1 | latency ms |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for name, e in res["summary"].items():
         lines.append(
             f"| {name} | {fmt(e['rmse'], 4)} | {fmt(e['mae'], 4)} | {fmt(e['absrel'], 4)} | "
-            f"{fmt(e['delta1'], 3)} | {fmt(e['rmse_hole'], 4)} | {e['psnr']:.2f} | {e['ssim']:.4f} | "
+            f"{fmt(e['delta1'], 3)} | {fmt(e.get('irmse', float('nan')), 4)} | "
+            f"{fmt(e.get('imae', float('nan')), 4)} | {fmt(e['rmse_hole'], 4)} | "
+            f"{e['psnr']:.2f} | {e['ssim']:.4f} | "
             f"{e['boundary_rmse']:.4f} | {e['edge_f1']:.3f} | {e['latency_ms']:.1f} |"
         )
     for name, why in res["not_evaluated"].items():
-        lines.append(f"| {name} | not evaluated | | | | | | | | | {why} |")
+        lines.append(f"| {name} | not evaluated | | | | | | | | | | | {why} |")
     return "\n".join(lines) + "\n"
 
 

@@ -133,6 +133,27 @@ def edge_scores(pred, gt, data_range: float, valid=None, border: int = DEFAULT_B
     return {"edge_precision": prec, "edge_recall": rec, "edge_f1": f1}
 
 
+def irmse(pred, gt, valid=None, border: int = DEFAULT_BORDER,
+          mask: Optional[np.ndarray] = None) -> float:
+    """Inverse-depth RMSE (1/pred vs 1/gt) over pixels where both pred > 0 and gt > 0."""
+    m = eval_mask(pred, gt, valid, border) if mask is None else mask
+    pos = m & (np.asarray(pred) > 0) & (np.asarray(gt) > 0)
+    if not pos.any():
+        return float("nan")
+    e = (1.0 / pred[pos].astype(np.float64)) - (1.0 / gt[pos].astype(np.float64))
+    return float(np.sqrt(np.mean(e * e)))
+
+
+def imae(pred, gt, valid=None, border: int = DEFAULT_BORDER,
+         mask: Optional[np.ndarray] = None) -> float:
+    """Inverse-depth MAE (1/pred vs 1/gt) over pixels where both pred > 0 and gt > 0."""
+    m = eval_mask(pred, gt, valid, border) if mask is None else mask
+    pos = m & (np.asarray(pred) > 0) & (np.asarray(gt) > 0)
+    if not pos.any():
+        return float("nan")
+    return float(np.mean(np.abs(1.0 / pred[pos].astype(np.float64) - 1.0 / gt[pos].astype(np.float64))))
+
+
 def compute_all_metrics(
     pred, gt, data_range: float, valid=None, border: int = DEFAULT_BORDER,
     rel_thresh: float = 0.03, boundary_radius: int = 2, edge_tol: int = 1,
@@ -140,13 +161,13 @@ def compute_all_metrics(
 ) -> Dict[str, float]:
     """All required metrics on one shared mask. Keys: rmse, mae, psnr, ssim,
     boundary_rmse, edge_precision, edge_recall, edge_f1, absrel, delta1,
-    rmse_hole.
+    rmse_hole, irmse, imae.
 
     Predictions are clamped to ``[0, data_range]`` before scoring (methodology
-    A5). ``absrel`` / ``delta1`` are restricted to ``gt > 0`` pixels of the
-    shared mask. ``rmse_hole`` restricts the mask to ``hole_mask`` (e.g. HR
-    pixels whose source LR pixel was invalid) and is NaN when no hole mask is
-    given or the intersection is empty.
+    A5). ``absrel`` / ``delta1`` / ``irmse`` / ``imae`` are restricted to
+    ``gt > 0`` pixels of the shared mask. ``rmse_hole`` restricts the mask to
+    ``hole_mask`` (e.g. HR pixels whose source LR pixel was invalid) and is NaN
+    when no hole mask is given or the intersection is empty.
     """
     pred = np.clip(np.asarray(pred, dtype=np.float32), 0.0, data_range)
     gt = np.asarray(gt, dtype=np.float32)
@@ -167,9 +188,22 @@ def compute_all_metrics(
         with np.errstate(divide="ignore", invalid="ignore"):
             ratio = np.where(p > 0, np.maximum(p / g, g / np.maximum(p, 1e-12)), np.inf)
         out["delta1"] = float(np.mean(ratio < 1.25))
+        # Inverse-depth metrics (A11): restricted to pred > 0 as well
+        pos_inv = pos & (pred > 0)
+        if pos_inv.any():
+            pi = pred[pos_inv].astype(np.float64)
+            gi = gt[pos_inv].astype(np.float64)
+            inv_e = 1.0 / pi - 1.0 / gi
+            out["irmse"] = float(np.sqrt(np.mean(inv_e * inv_e)))
+            out["imae"] = float(np.mean(np.abs(inv_e)))
+        else:
+            out["irmse"] = float("nan")
+            out["imae"] = float("nan")
     else:
         out["absrel"] = float("nan")
         out["delta1"] = float("nan")
+        out["irmse"] = float("nan")
+        out["imae"] = float("nan")
     if hole_mask is None:
         out["rmse_hole"] = float("nan")
     else:

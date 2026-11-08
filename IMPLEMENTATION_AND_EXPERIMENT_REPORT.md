@@ -89,13 +89,13 @@ Full analysis: `RESEARCH_REFERENCE_ANALYSIS.md`. Post-implementation status:
 | A2 | Hole-band classical boost + hard overwrite at measured pixels (stash, SpAgNet) | **partially adopted** | band boost implemented (`43264c5`); hard `C=1` overwrite not ported |
 | A3 | Mask-normalised deep input (CFCNet `conv(d,1)/conv(mask,1)` + mask channel) | not adopted | would invalidate existing checkpoint distribution; needs retraining (Kaggle) |
 | A4 | Never average zeros; nearest-valid downsample, nearest mask resampling (PENet, sparse-to-dense) | **pre-existing** | `data/degradation.py:99-101` nearest-filled downsample, `upsample_mask_nearest` |
-| A5 | Clamp predictions to `[0, max_depth]` before scoring (Sparse-Depth-Completion) | not adopted | `eval/metrics.py` scores unclamped preds (≥0 clamp only in baselines); candidate follow-up |
+| A5 | Clamp predictions to `[0, max_depth]` before scoring (Sparse-Depth-Completion) | **adopted** (`826d212`) | `eval/metrics.py:compute_all_metrics` clamps to `[0, data_range]` before all metrics |
 | A6 | berHu loss, NaN/0-aware masking (sparse-to-dense) | not adopted | no training this session; applies to future finetune |
 | A7 | Density-jittered training, edge-biased holes, Bernoulli thinning (CFCNet, sparse-to-dense) | not adopted | training-side; synthetic hole/noise regimes already exist for evaluation |
 | A8 | CSPN-style learned guided propagation (PENet) | not adopted | new module + training; would need its own validation cycle |
-| A9 | Per-pixel measurement re-injection with reliability gate (PENet) | not adopted | existing consistency step is global-strength (`consistency_strength`) |
+| A9 | Per-pixel measurement re-injection with reliability gate (PENet) | **adopted** (this commit) | `hybrid/consistency.py:enforce_consistency(hard_overwrite=True)` — opt-in, off by default |
 | A10 | Eval harness discipline: per-image metrics, sync latency, density sweep (sparse-to-dense, SpAgNet) | **mostly pre-existing** | batch-1 per-image metrics + `torch.cuda.synchronize()` latency already in `eval/evaluate.py`; **density sweep (`patterns/*.npy`) not run** |
-| A11 | iMAE / iRMSE inverse-depth metrics | not adopted | not in `METRIC_KEYS`; cheap follow-up if the rubric wants it |
+| A11 | iMAE / iRMSE inverse-depth metrics | **adopted** (this commit) | `eval/metrics.py:compute_all_metrics` now returns `irmse`/`imae`; `eval/evaluate.py` METRIC_KEYS and summary table updated |
 | A12 | Own stash@{0} hole-band fusion + tests | **adopted (scoped)** | see §3 |
 
 ## 5. Evaluation methodology and honesty fixes
@@ -174,12 +174,13 @@ never re-labelled by anything in this branch.
   quality is unverifiable here; the Kaggle notebook with attached checkpoints is the
   intended vehicle. Local deep smoke remains `python -m deep.inference --random-init`.
 - **The Kaggle notebook has not been executed on Kaggle** — this machine has no
-  Kaggle/GPU. All four experiment paths were smoke-tested locally instead (§7).
+  Kaggle/GPU. All experiment paths were smoke-tested locally instead (§7).
 - **`eval_P4_<TeamID>.md` not produced** — requires the team USNs and deadline, which
   are unknown (PDF extraction had no USN list).
-- **A3/A6/A7/A8/A9/A11 not implemented** (see §4) — training-side or new modules
-  requiring their own validation cycles; A5 clamp and A11 inverse-depth metrics are
-  cheap follow-ups if the rubric rewards them.
+- **A3/A6/A7/A8 not implemented** (see §4) — training-side or new modules
+  requiring their own validation cycles.
+- **A9 `hard_overwrite=True`** is implemented but disabled by default; it needs
+  Kaggle validation to confirm it improves RMSE before enabling in the frozen config.
 - **A10 density sweep not run** (`patterns/*.npy` masks).
 - **`stash@{1}`** (denoise + default-method switch) left in place, unmerged.
 - **`feat/classical` extras** (`tuned_jbu`, `masked_jbu`) not merged — out of scope

@@ -26,6 +26,7 @@ def enforce_consistency(
     mode="bicubic",
     strength=1.0,
     iterations=1,
+    hard_overwrite=False,
 ):
     """Project the fused HR depth onto the known measurements and return the corrected map.
 
@@ -33,6 +34,12 @@ def enforce_consistency(
     ``iterations`` re-projects the corrected map (>= 0). The residual is upsampled as
     an implementation approximation, not treated as an exact projection. Invalid LR
     measurements are excluded on every iteration.
+
+    ``hard_overwrite`` (A9): after the damped residual correction, hard-overwrite the
+    HR pixels that correspond exactly to valid LR measurement locations with the
+    upsampled LR value. This is the PENet-style per-pixel measurement re-injection:
+    ``depth[valid_hr] = lr_upsampled[valid_hr]``. Disabled by default to preserve
+    the existing calibrated behaviour; enable for maximum measurement fidelity.
     """
     if not 0.0 <= strength <= 1.0:
         raise ValueError("strength must be in [0, 1]")
@@ -81,4 +88,20 @@ def enforce_consistency(
             where=support_hr > 1e-6,
         )
         corrected = corrected + np.float32(strength) * residual_hr
-    return np.maximum(corrected, 0.0).astype(np.float32)
+
+    corrected = np.maximum(corrected, 0.0).astype(np.float32)
+
+    if hard_overwrite and valid.any():
+        # A9: hard-overwrite HR pixels at valid LR locations with the LR measurement
+        # value (nearest-upsampled). This guarantees measurement fidelity at the
+        # cost of a small discontinuity at the LR grid boundary.
+        lr_hr = cv2.resize(
+            np.where(valid, lr, 0.0).astype(np.float32),
+            (W, H), interpolation=cv2.INTER_NEAREST,
+        )
+        valid_hr = cv2.resize(
+            valid.astype(np.float32), (W, H), interpolation=cv2.INTER_NEAREST,
+        ).astype(bool)
+        corrected = np.where(valid_hr, lr_hr, corrected).astype(np.float32)
+
+    return corrected
