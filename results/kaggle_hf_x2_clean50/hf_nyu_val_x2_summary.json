@@ -1,0 +1,54 @@
+{
+  "summary": {
+    "nearest": {
+      "rmse": 0.0392,
+      "mae": 0.0105,
+      "psnr": 50.88,
+      "ssim": 0.9951,
+      "boundary_rmse": 0.1585,
+      "edge_f1": 0.906,
+      "latency_ms": 1.8
+    },
+    "bilinear": {
+      "rmse": 0.032,
+      "mae": 0.009,
+      "psnr": 52.71,
+      "ssim": 0.9968,
+      "boundary_rmse": 0.1286,
+      "edge_f1": 0.562,
+      "latency_ms": 1.4
+    },
+    "bicubic": {
+      "rmse": 0.0276,
+      "mae": 0.008,
+      "psnr": 54.03,
+      "ssim": 0.9975,
+      "boundary_rmse": 0.1102,
+      "edge_f1": 0.617,
+      "latency_ms": 1.6
+    },
+    "classical": {
+      "rmse": 0.0441,
+      "mae": 0.013,
+      "psnr": 49.66,
+      "ssim": 0.9941,
+      "boundary_rmse": 0.1805,
+      "edge_f1": 0.795,
+      "latency_ms": 1429.8
+    }
+  },
+  "not_evaluated": {
+    "hybrid": "UnsupportedScaleError: Deep branch (SGNet) has verified checkpoints only for scales (4, 8, 16); got x2. Use the classical branch for this scale or train an SGNet x2 model yourself.",
+    "deep": "all samples failed, e.g. ['00001: UnsupportedScaleError: Deep branch (SGNet) has verified checkpoints only for scales (4, 8, 16); got x2. Use the classical branch for this scale or train an SGNet x2 model yourself.']"
+  },
+  "meta": {
+    "dataset": "hf_nyu_val",
+    "split": "test",
+    "scale": 2,
+    "n_samples": 50,
+    "unit": "m",
+    "data_range": 10.0,
+    "border": 6,
+    "run_info": "Kaggle Tesla T4, 2026-11-08, master branch (no checkpoints)"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "bicubic": {
+      "rmse": 0.0538,
+      "mae": 0.0258,
+      "psnr": 47.1,
+      "ssim": 0.9894,
+      "boundary_rmse": 0.1925,
+      "edge_f1": 0.345,
+      "latency_ms": 1.6
+    },
+    "classical": {
+      "rmse": 0.0773,
+      "mae": 0.0271,
+      "psnr": 44.82,
+      "ssim": 0.9836,
+      "boundary_rmse": 0.2988,
+      "edge_f1": 0.703,
+      "latency_ms": 581.7
+    }
+  },
+  "not_evaluated": {
+    "hybrid": "DeepModelUnavailableError: No SGNet x4 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X4_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X4.",
+    "deep": "all samples failed, e.g. [\"00001: DeepModelUnavailableError: No SGNet x4 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X4_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X4.\"]"
+  },
+  "meta": {
+    "dataset": "hf_nyu_val",
+    "split": "test",
+    "scale": 4,
+    "n_samples": 50,
+    "unit": "m",
+    "data_range": 10.0,
+    "border": 6,
+    "run_info": "Kaggle Tesla T4, 2026-11-08, master branch (no checkpoints)"
+  }
+}

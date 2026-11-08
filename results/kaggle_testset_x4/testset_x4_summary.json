@@ -1,0 +1,56 @@
+{
+  "summary": {
+    "nearest": {
+      "rmse": 0.2497,
+      "mae": 0.0493,
+      "psnr": 34.57,
+      "ssim": 0.9699,
+      "boundary_rmse": 0.9103,
+      "edge_f1": 0.382,
+      "latency_ms": 2.4
+    },
+    "bilinear": {
+      "rmse": 0.2088,
+      "mae": 0.0353,
+      "psnr": 36.16,
+      "ssim": 0.9807,
+      "boundary_rmse": 0.7976,
+      "edge_f1": 0.456,
+      "latency_ms": 2.2
+    },
+    "bicubic": {
+      "rmse": 0.2178,
+      "mae": 0.0403,
+      "psnr": 35.74,
+      "ssim": 0.9771,
+      "boundary_rmse": 0.8133,
+      "edge_f1": 0.46,
+      "latency_ms": 2.5
+    },
+    "classical": {
+      "rmse": 0.3089,
+      "mae": 0.0541,
+      "psnr": 34.17,
+      "ssim": 0.9698,
+      "boundary_rmse": 0.8401,
+      "edge_f1": 0.532,
+      "latency_ms": 351.2
+    }
+  },
+  "not_evaluated": {
+    "hybrid_fixed02": "DeepModelUnavailableError: No SGNet x4 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X4_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X4.",
+    "hybrid_adaptive": "DeepModelUnavailableError: No SGNet x4 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X4_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X4.",
+    "hybrid": "NotImplementedError: deep checkpoint unavailable: No SGNet x4 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X4_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X4.",
+    "deep": "all samples failed, e.g. [\"sample_00: DeepModelUnavailableError: No SGNet x4 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X4_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X4.\"]"
+  },
+  "meta": {
+    "dataset": "depthsr_testset",
+    "split": "test",
+    "scale": 4,
+    "n_samples": 20,
+    "unit": "m",
+    "data_range": 10.0,
+    "border": 6,
+    "run_info": "Kaggle Tesla T4, 2026-11-08, master branch (no checkpoints)"
+  }
+}

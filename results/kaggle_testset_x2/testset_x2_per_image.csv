@@ -1,0 +1,9 @@
+method,RMSE,MAE,PSNR,SSIM,boundary RMSE,edge F1,latency ms
+nearest,0.1601,0.0233,38.41,0.9882,0.6936,0.631,5.8
+bilinear,0.1320,0.0159,39.99,0.9917,0.5937,0.669,5.4
+bicubic,0.1390,0.0191,39.51,0.9903,0.6172,0.654,5.8
+classical,0.1991,0.0210,37.79,0.9868,0.5676,0.675,858.1
+hybrid_fixed02,not evaluated,,,,,,"UnsupportedScaleError: Deep branch (SGNet) has verified checkpoints only for scales (4, 8, 16); got x2. Use the classical branch for this scale or train an SGNet x2 model yourself."
+hybrid_adaptive,not evaluated,,,,,,"UnsupportedScaleError: Deep branch (SGNet) has verified checkpoints only for scales (4, 8, 16); got x2. Use the classical branch for this scale or train an SGNet x2 model yourself."
+hybrid,not evaluated,,,,,,"NotImplementedError: deep checkpoint unavailable: Deep branch (SGNet) has verified checkpoints only for scales (4, 8, 16); got x2. Use the classical branch for this scale or train an SGNet x2 model yourself."
+deep,not evaluated,,,,,,"all samples failed, e.g. ['sample_00: UnsupportedScaleError: Deep branch (SGNet) has verified checkpoints only for scales (4, 8, 16); got x2. Use the classical branch for this scale or train an SGNet x2 model yourself.']"

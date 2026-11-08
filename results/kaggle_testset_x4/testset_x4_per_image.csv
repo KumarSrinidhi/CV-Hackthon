@@ -1,0 +1,9 @@
+method,RMSE,MAE,PSNR,SSIM,boundary RMSE,edge F1,latency ms
+nearest,0.2497,0.0493,34.57,0.9699,0.9103,0.382,2.4
+bilinear,0.2088,0.0353,36.16,0.9807,0.7976,0.456,2.2
+bicubic,0.2178,0.0403,35.74,0.9771,0.8133,0.460,2.5
+classical,0.3089,0.0541,34.17,0.9698,0.8401,0.532,351.2
+hybrid_fixed02,not evaluated,,,,,,"DeepModelUnavailableError: No SGNet x4 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X4_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X4."
+hybrid_adaptive,not evaluated,,,,,,"DeepModelUnavailableError: No SGNet x4 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X4_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X4."
+hybrid,not evaluated,,,,,,"NotImplementedError: deep checkpoint unavailable: No SGNet x4 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X4_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X4."
+deep,not evaluated,,,,,,"all samples failed, e.g. [""sample_00: DeepModelUnavailableError: No SGNet x4 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X4_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X4.""]"

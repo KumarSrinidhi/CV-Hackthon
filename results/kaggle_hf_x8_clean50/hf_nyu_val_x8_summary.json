@@ -1,0 +1,54 @@
+{
+  "summary": {
+    "nearest": {
+      "rmse": 0.1151,
+      "mae": 0.0424,
+      "psnr": 41.41,
+      "ssim": 0.9615,
+      "boundary_rmse": 0.4272,
+      "edge_f1": 0.447,
+      "latency_ms": 1.8
+    },
+    "bilinear": {
+      "rmse": 0.0913,
+      "mae": 0.036,
+      "psnr": 43.47,
+      "ssim": 0.9785,
+      "boundary_rmse": 0.3439,
+      "edge_f1": 0.066,
+      "latency_ms": 1.2
+    },
+    "bicubic": {
+      "rmse": 0.0826,
+      "mae": 0.0336,
+      "psnr": 44.36,
+      "ssim": 0.9793,
+      "boundary_rmse": 0.3116,
+      "edge_f1": 0.102,
+      "latency_ms": 1.7
+    },
+    "classical": {
+      "rmse": 0.1247,
+      "mae": 0.0479,
+      "psnr": 40.88,
+      "ssim": 0.9641,
+      "boundary_rmse": 0.4312,
+      "edge_f1": 0.544,
+      "latency_ms": 367.9
+    }
+  },
+  "not_evaluated": {
+    "hybrid": "DeepModelUnavailableError: No SGNet x8 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X8_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X8.",
+    "deep": "all samples failed, e.g. [\"00001: DeepModelUnavailableError: No SGNet x8 checkpoint found in '/kaggle/working/CV-Hackthon/checkpoints/sgnet'. Download the official *_R.pth files (link in the SGNet README) and place e.g. SGNet_X8_R.pth there, or set SGNET_CKPT_DIR / SGNET_CKPT_X8.\"]"
+  },
+  "meta": {
+    "dataset": "hf_nyu_val",
+    "split": "test",
+    "scale": 8,
+    "n_samples": 50,
+    "unit": "m",
+    "data_range": 10.0,
+    "border": 6,
+    "run_info": "Kaggle Tesla T4, 2026-11-08, master branch (no checkpoints)"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "summary": {
+    "nearest": {
+      "rmse": 0.1601,
+      "mae": 0.0233,
+      "psnr": 38.41,
+      "ssim": 0.9882,
+      "boundary_rmse": 0.6936,
+      "edge_f1": 0.631,
+      "latency_ms": 5.8
+    },
+    "bilinear": {
+      "rmse": 0.132,
+      "mae": 0.0159,
+      "psnr": 39.99,
+      "ssim": 0.9917,
+      "boundary_rmse": 0.5937,
+      "edge_f1": 0.669,
+      "latency_ms": 5.4
+    },
+    "bicubic": {
+      "rmse": 0.139,
+      "mae": 0.0191,
+      "psnr": 39.51,
+      "ssim": 0.9903,
+      "boundary_rmse": 0.6172,
+      "edge_f1": 0.654,
+      "latency_ms": 5.8
+    },
+    "classical": {
+      "rmse": 0.1991,
+      "mae": 0.021,
+      "psnr": 37.79,
+      "ssim": 0.9868,
+      "boundary_rmse": 0.5676,
+      "edge_f1": 0.675,
+      "latency_ms": 858.1
+    }
+  },
+  "not_evaluated": {
+    "hybrid_fixed02": "UnsupportedScaleError: Deep branch (SGNet) has verified checkpoints only for scales (4, 8, 16); got x2. Use the classical branch for this scale or train an SGNet x2 model yourself.",
+    "hybrid_adaptive": "UnsupportedScaleError: Deep branch (SGNet) has verified checkpoints only for scales (4, 8, 16); got x2. Use the classical branch for this scale or train an SGNet x2 model yourself.",
+    "hybrid": "NotImplementedError: deep checkpoint unavailable: Deep branch (SGNet) has verified checkpoints only for scales (4, 8, 16); got x2. Use the classical branch for this scale or train an SGNet x2 model yourself.",
+    "deep": "all samples failed, e.g. ['sample_00: UnsupportedScaleError: Deep branch (SGNet) has verified checkpoints only for scales (4, 8, 16); got x2. Use the classical branch for this scale or train an SGNet x2 model yourself.']"
+  },
+  "meta": {
+    "dataset": "depthsr_testset",
+    "split": "test",
+    "scale": 2,
+    "n_samples": 20,
+    "unit": "m",
+    "data_range": 10.0,
+    "border": 6,
+    "run_info": "Kaggle Tesla T4, 2026-11-08, master branch (no checkpoints)"
+  }
+}
