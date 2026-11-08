@@ -52,6 +52,8 @@ def process(rgb, depth_file, mask_file, scale, gt_file=None, make_comparison=Fal
     lr = load_depth(_path(depth_file), depth_scale)
     gt = load_depth(_path(gt_file), depth_scale) if gt_file is not None else None
     cfg = load_config()
+    scale = int(scale)
+    input_note = None
 
     # Auto-fix geometry: if depth is the same size as RGB, downsample it to LR.
     H_rgb, W_rgb = rgb.shape[:2]
@@ -59,6 +61,14 @@ def process(rgb, depth_file, mask_file, scale, gt_file=None, make_comparison=Fal
     if (h_lr, w_lr) == (H_rgb, W_rgb):
         h_lr, w_lr = H_rgb // scale, W_rgb // scale
         lr = cv2.resize(lr, (w_lr, h_lr), interpolation=cv2.INTER_AREA)
+    expected_rgb = (w_lr * scale, h_lr * scale)
+    if (W_rgb, H_rgb) != expected_rgb:
+        interpolation = cv2.INTER_AREA if (W_rgb, H_rgb) > expected_rgb else cv2.INTER_LINEAR
+        rgb = cv2.resize(rgb, expected_rgb, interpolation=interpolation)
+        input_note = (
+            f"RGB resized from {W_rgb}x{H_rgb} to "
+            f"{expected_rgb[0]}x{expected_rgb[1]} to match the LR depth at x{scale}"
+        )
 
     # Derive validity mask from depth (ignore any uploaded mask — it may be HR-sized).
     mask = None
@@ -84,6 +94,8 @@ def process(rgb, depth_file, mask_file, scale, gt_file=None, make_comparison=Fal
     out["conf_deep"] = confidence_overlay(rgb, wd) if wd is not None else colormap
 
     lines = [f"Pipeline: hybrid  |  scale x{int(scale)}  |  output {depth.shape[1]}x{depth.shape[0]}"]
+    if input_note:
+        lines.append(f"Input adjustment: {input_note}")
     deep_available = result["intermediates"].get("deep_available", False)
     if not result["fallback"]:
         h = cfg["hybrid"]

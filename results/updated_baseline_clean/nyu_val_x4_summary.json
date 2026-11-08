@@ -1,0 +1,47 @@
+{
+  "summary": {
+    "deep": {
+      "n_ok": 30,
+      "n_failed": 0,
+      "rmse": 0.012297125408184182,
+      "rmse_std": 0.011268511938480986,
+      "mae": 0.0036222100404026975,
+      "mae_std": 0.0014661080526820207,
+      "psnr": 59.568948829822716,
+      "psnr_std": 3.99483318682277,
+      "ssim": 0.9993783566882417,
+      "ssim_std": 0.00047955490729377167,
+      "boundary_rmse": 0.05374330237291245,
+      "boundary_rmse_std": 0.034476358917533256,
+      "edge_precision": 0.9896867755015523,
+      "edge_precision_std": 0.0074578376850273015,
+      "edge_recall": 0.9635645152602886,
+      "edge_recall_std": 0.024545074927063586,
+      "edge_f1": 0.9763396946772602,
+      "edge_f1_std": 0.015498277951994585,
+      "latency_ms": 2080.257776666743,
+      "latency_ms_std": 240.12955746903592,
+      "failures": []
+    }
+  },
+  "not_evaluated": {},
+  "meta": {
+    "dataset": "nyu",
+    "scale": 4,
+    "n_samples": 30,
+    "unit": "m",
+    "data_range": 10.0,
+    "border": 6,
+    "boundary_rel_thresh": 0.03,
+    "degradation": {
+      "mode": "bicubic",
+      "noise_std": 0.0,
+      "noise_relative": false,
+      "hole_ratio": 0.0,
+      "n_block_holes": 0,
+      "block_frac": 0.15,
+      "seed": 0
+    },
+    "split": "val"
+  }
+}

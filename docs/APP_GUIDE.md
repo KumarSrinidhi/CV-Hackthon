@@ -23,6 +23,9 @@ The application only calls the three frozen wrapper interfaces; it never edits
 - RGB must be exactly `scale` times the LR depth in both dimensions.
 - Mask (optional): same shape as the LR depth, non-zero = valid. Invalid depth (<= 0, NaN, Inf) is never a measurement.
 - Scales: classical x2/x4/x8/x16; deep and hybrid x4/x8/x16.
+- The Gradio UI resizes an RGB upload to the required dimensions when it does not
+  match the LR depth; the status panel reports the adjustment. The CLI remains strict
+  and reports a geometry error instead.
 
 ## Demo sequence
 
