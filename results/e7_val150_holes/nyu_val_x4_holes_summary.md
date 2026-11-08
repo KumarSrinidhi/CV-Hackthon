@@ -1,0 +1,6 @@
+### nyu / val / x4  (n=150, unit=m, data_range=10.0, border=6px, degradation={'mode': 'bicubic', 'noise_std': 0.0, 'noise_relative': False, 'hole_ratio': 0.1, 'n_block_holes': 0, 'block_frac': 0.15, 'seed': 0})
+
+| method | RMSE | MAE | PSNR | SSIM | boundary RMSE | edge F1 | latency ms |
+|---|---|---|---|---|---|---|---|
+| bicubic | 0.0374 | 0.0120 | 49.47 | 0.9943 | 0.1901 | 0.231 | 2.8 |
+| deep | 0.0333 | 0.0070 | 50.59 | 0.9963 | 0.1682 | 0.861 | 1872.3 |

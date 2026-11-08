@@ -1,0 +1,70 @@
+{
+  "summary": {
+    "bicubic": {
+      "n_ok": 150,
+      "n_failed": 0,
+      "rmse": 0.03739260407722967,
+      "rmse_std": 0.019165431060056227,
+      "mae": 0.012042205513259423,
+      "mae_std": 0.004778908810954479,
+      "psnr": 49.46673245537561,
+      "psnr_std": 3.9120445791251734,
+      "ssim": 0.9942991255969282,
+      "ssim_std": 0.003430526733540239,
+      "boundary_rmse": 0.19007692744505264,
+      "boundary_rmse_std": 0.0700932424782683,
+      "edge_precision": 0.7197860887449798,
+      "edge_precision_std": 0.37298328839869477,
+      "edge_recall": 0.1578980891300449,
+      "edge_recall_std": 0.1748857603965879,
+      "edge_f1": 0.23096693297048831,
+      "edge_f1_std": 0.2246467962779162,
+      "latency_ms": 5.012623999500647,
+      "latency_ms_std": 5.090628889219962,
+      "failures": []
+    },
+    "deep": {
+      "n_ok": 150,
+      "n_failed": 0,
+      "rmse": 0.0343728108420111,
+      "rmse_std": 0.019330790542470968,
+      "mae": 0.0071494261732095365,
+      "mae_std": 0.00285983682173075,
+      "psnr": 50.32539350157463,
+      "psnr_std": 4.143503040193194,
+      "ssim": 0.9961126421629258,
+      "ssim_std": 0.0022123080704413247,
+      "boundary_rmse": 0.17363584433759457,
+      "boundary_rmse_std": 0.07662065899990744,
+      "edge_precision": 0.8284416120952154,
+      "edge_precision_std": 0.11565067238769056,
+      "edge_recall": 0.8882169483226554,
+      "edge_recall_std": 0.08408957911170092,
+      "edge_f1": 0.8553234886123374,
+      "edge_f1_std": 0.10276735007698622,
+      "latency_ms": 1874.9766039993847,
+      "latency_ms_std": 294.073320833493,
+      "failures": []
+    }
+  },
+  "not_evaluated": {},
+  "meta": {
+    "dataset": "nyu",
+    "scale": 4,
+    "n_samples": 150,
+    "unit": "m",
+    "data_range": 10.0,
+    "border": 6,
+    "boundary_rel_thresh": 0.03,
+    "degradation": {
+      "mode": "bicubic",
+      "noise_std": 0.0,
+      "noise_relative": false,
+      "hole_ratio": 0.1,
+      "n_block_holes": 0,
+      "block_frac": 0.15,
+      "seed": 0
+    },
+    "split": "val"
+  }
+}

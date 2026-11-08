@@ -5,6 +5,19 @@
 
 ---
 
+## Addendum (2026-11-07) — deep-branch improvement session
+
+Supersedes nothing above; the historical sections are preserved. Corrections and additions from the improvement session (`docs/EXPERIMENT_LOG.md`, `docs/EXPERIMENTAL_RESULTS.md`):
+
+1. **Stale test count:** "35 passed" below was accurate at the time; the current suite is **116 passed** (was 90+1 skip before the improvement session).
+2. **Baseline reproduction:** the §5 3-track numbers were reproduced exactly on 2026-11-06 (deep RMSE 0.0101 / F1 0.960 / 1900 ms) → `results/baseline_deep_repro/`.
+3. **Robustness correction:** deep under 10% holes was re-measured at **0.0438** (worse than bicubic 0.0374) — the earlier "deep 0.0371 ≈ bicubic" claim was optimistic; both agree the holes advantage collapses.
+4. **Improved deep branch:** regime-aware adaptive inference (`deep/adaptive.py`) — clean outputs identical to the original checkpoint, degraded regimes improved 24–60% (val150: holes 0.0333, noise 0.02 0.0219, noise 0.05 0.0293). Clean HF benchmark preserved (n=645: 0.0102 / F1 0.968).
+5. **Hybrid v2:** validation-calibrated fusion replacing the legacy evidence weights (which measurably damaged deep 3× on clean); see `docs/EXPERIMENTAL_RESULTS.md` §4.
+6. **Latency of the adaptive path:** unchanged (~1.84–1.9 s/img x4; regime detection adds <1 ms CPU).
+
+---
+
 ## 0. Honest summary
 
 | Question | Verified answer |

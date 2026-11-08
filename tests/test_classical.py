@@ -9,7 +9,7 @@ from classical.interpolation import interpolate_depth
 from classical.pipeline import reconstruct
 
 
-@pytest.mark.parametrize("scale", [1, 2, 4, 8])
+@pytest.mark.parametrize("scale", [1, 2, 3, 4, 8])
 @pytest.mark.parametrize("method", ["nearest", "bilinear", "bicubic", "jbu", "guided", "classical"])
 def test_constant_depth_and_texture(scale, method):
     depth = np.full((5, 7), 2.5, np.float32)
@@ -50,6 +50,18 @@ def test_empty_and_unresolved_support():
     assert out[-1, -1] == 0
 
 
+def test_classical_fills_enclosed_hole_without_extending_open_gap():
+    depth = np.zeros((15, 15), np.float32)
+    depth[1:10, 1:10] = 3
+    depth[3:8, 3:8] = 0
+    rgb = np.zeros((60, 60, 3), np.uint8)
+
+    out = classical_hr_depth(depth, rgb, scale=4)
+
+    assert out[22, 22] == pytest.approx(3)
+    assert out[-1, -1] == 0
+
+
 def test_boundary_refinement_preserves_step_and_rejects_rgb_only_edges():
     depth = np.tile(np.array([2, 2, 2, 5, 5, 5], np.float32), (5, 1))
     rgb = np.zeros((*depth.shape, 3), np.float32)
@@ -66,14 +78,15 @@ def test_guided_filter_preserves_unsupported_pixels():
     np.testing.assert_allclose(guided_filter(depth, depth / 3), depth, atol=1e-6)
 
 
-def test_rgb_can_relocate_a_depth_supported_edge():
+@pytest.mark.parametrize("scale", [3, 4])
+def test_rgb_can_relocate_a_depth_supported_edge(scale):
     depth = np.tile(np.array([2, 2, 5, 5], np.float32), (4, 1))
-    rgb = np.zeros((16, 16, 3), np.float32)
-    rgb[:, 7:] = 1
-    guided = classical_hr_depth(depth, rgb, None, 4)
-    # Full A1→A4 pipeline: left half should be near 2, right half near 5
-    assert guided[8, 3] == pytest.approx(2, abs=0.5)
-    assert guided[8, 12] == pytest.approx(5, abs=0.5)
+    rgb = np.zeros((4 * scale, 4 * scale, 3), np.float32)
+    edge = 2 * scale - 1
+    rgb[:, edge:] = 1
+    guided = classical_hr_depth(depth, rgb, None, scale)
+    assert guided[2 * scale, edge - 1] == pytest.approx(2)
+    assert guided[2 * scale, edge] == pytest.approx(5)
 
 
 @pytest.mark.parametrize("scale", [0, -2, True, 2.5])
@@ -96,10 +109,9 @@ def test_invalid_mask_and_rgb():
 def test_public_wrapper_runs_full_pipeline():
     depth = np.array([[2, 3], [5, 6]], np.float32)
     rgb = np.random.default_rng(7).integers(0, 256, (8, 8, 3), dtype=np.uint8)
-    out = classical_hr_depth(depth, rgb, None)
-    # Full A1→A4 pipeline produces a valid (8,8) float32 map
-    assert out.shape == (8, 8) and out.dtype == np.float32
-    assert np.isfinite(out).all()
+    np.testing.assert_array_equal(
+        classical_hr_depth(depth, rgb, None), reconstruct(depth, rgb, None, method="classical")
+    )
 
 
 def test_jbu_excludes_masked_and_nonfinite_samples_before_accumulation():

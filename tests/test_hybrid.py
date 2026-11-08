@@ -7,6 +7,8 @@ from hybrid import hybrid_hr_depth
 from hybrid.confidence import estimate_confidence
 from hybrid.consistency import enforce_consistency
 from hybrid.fusion import fuse, fuse_fixed
+from data.degradation import downsample, forward_operator
+from eval.evaluate import load_method
 
 
 @pytest.fixture()
@@ -77,6 +79,23 @@ def test_fuse_fixed_weight():
     np.testing.assert_allclose(fuse_fixed(Dc, Dd, 0.25), 0.25 * 2 + 0.75 * 6)
 
 
+def test_zero_alpha_is_deep_equivalence():
+    Dc = np.full((2, 2), 2.0, np.float32)
+    Dd = np.full((2, 2), 6.0, np.float32)
+    np.testing.assert_array_equal(fuse_fixed(Dc, Dd, 0.0), Dd)
+
+
+def test_confidence_can_disable_classical_contribution():
+    Dc = np.full((4, 4), 2.0, np.float32)
+    Dd = np.full((4, 4), 6.0, np.float32)
+    Wc, Wd = estimate_confidence(
+        Dc, Dd, np.full((2, 2), 2.0, np.float32), None,
+        np.zeros((4, 4, 3), np.float32), 2, adaptive=False,
+    )
+    np.testing.assert_array_equal(Wc, 0.0)
+    np.testing.assert_array_equal(Wd, 1.0)
+
+
 def test_consistency_constant_is_identity():
     lr = np.full((2, 2), 4.0, np.float32)
     fused = np.full((4, 4), 4.0, np.float32)
@@ -101,6 +120,32 @@ def test_consistency_does_not_spread_invalid_hole_as_zero():
     np.testing.assert_allclose(out, 4.0, atol=1e-5)
 
 
+def test_consistency_uses_exact_operator_and_is_configurable():
+    gt = np.arange(64, dtype=np.float32).reshape(8, 8) / 10 + 1
+    lr = downsample(gt, 2)
+    fused = gt + 0.4
+    op = forward_operator(2, "bicubic")
+    uncorrected = enforce_consistency(fused, lr, None, 2, operator=op, strength=0.0, iterations=4)
+    corrected = enforce_consistency(fused, lr, None, 2, operator=op, strength=0.25, iterations=2)
+    np.testing.assert_array_equal(uncorrected, fused)
+    assert not np.array_equal(corrected, fused)
+    with pytest.raises(ValueError):
+        enforce_consistency(fused, lr, None, 2, operator=op, strength=1.1)
+    with pytest.raises(ValueError):
+        enforce_consistency(fused, lr, None, 2, operator=op, iterations=-1)
+
+
+def test_consistency_sweep_method_name_is_supported():
+    method = load_method("dl_consistency_s0.25_i2")
+    out = method(
+        np.full((4, 4), 2.0, np.float32),
+        np.zeros((16, 16, 3), np.float32),
+        np.ones((4, 4), bool),
+        4,
+    )
+    assert out.shape == (16, 16) and np.isfinite(out).all()
+
+
 def test_hybrid_raises_when_deep_unavailable(no_deep_checkpoint):
     lr, rgb = _synthetic(4)
     out, inter = hybrid_hr_depth(lr, rgb, None, 4, return_intermediates=True)
@@ -114,6 +159,13 @@ def test_hybrid_injectable_deep_fn():
     assert inter["deep_available"] is True
     np.testing.assert_allclose(inter["deep"], 3.0)
     assert out.shape == (16, 16)
+
+
+def test_hybrid_boundary_refinement_is_optional():
+    lr, rgb = _synthetic(4)
+    plain = hybrid_hr_depth(lr, rgb, None, 4, deep_fn=_fake_deep(3.0), use_boundary_refinement=False)
+    refined = hybrid_hr_depth(lr, rgb, None, 4, deep_fn=_fake_deep(3.0), use_boundary_refinement=True)
+    assert plain.shape == refined.shape == (16, 16)
 
 
 def test_hybrid_handles_invalid_deep_output():

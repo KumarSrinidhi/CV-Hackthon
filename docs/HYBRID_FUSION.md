@@ -26,11 +26,13 @@ Set `classical_alpha: null` to switch back to the adaptive confidence fusion bel
 ## Confidence estimation
 
 Adaptive weighting is conservative and capped by `max_classical_weight` (default
-`0.1`). Classical weight requires RGB/depth edge agreement, then uses valid
-measurement support and the residual under the forward operator as modulators.
-These signals are heuristics, not proof of higher HR accuracy. `adaptive=False`
-disables the gate and gives the deep branch zero-alpha behavior. Invalid deep
-pixels still force classical fallback for safety.
+`0.35`). The classical weight starts at a 0.01 floor and grows only where the
+classical branch has boundary support (depth-gradient + RGB/depth edge agreement)
+and explains the measured LR depth better than the deep branch (measurement
+residual under the forward operator). These signals are heuristics, not proof of
+higher HR accuracy. `adaptive=False` disables the gate and gives the deep branch
+zero-alpha behavior. Invalid deep pixels still force classical fallback for
+safety.
 
 ## Boundary refinement
 

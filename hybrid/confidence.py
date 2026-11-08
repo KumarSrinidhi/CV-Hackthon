@@ -35,13 +35,19 @@ def _normalize01(x):
     return x if mx <= 1e-12 else (x / mx).astype(np.float32)
 
 
-def _measurement_advantage(classical, deep, lr_depth, valid_mask):
+def _measurement_advantage(classical, deep, lr_depth, valid_mask, operator=None):
     """Return where classical better matches the available LR measurements."""
     h, w = lr_depth.shape
     classical_safe = np.where(np.isfinite(classical), classical, 0.0)
     deep_safe = np.where(np.isfinite(deep), deep, 0.0)
-    classical_lr = cv2.resize(classical_safe, (w, h), interpolation=cv2.INTER_AREA)
-    deep_lr = cv2.resize(deep_safe, (w, h), interpolation=cv2.INTER_AREA)
+    if operator is not None:
+        classical_lr = np.asarray(operator(classical_safe), dtype=np.float32)
+        deep_lr = np.asarray(operator(deep_safe), dtype=np.float32)
+        if classical_lr.shape != (h, w) or deep_lr.shape != (h, w):
+            raise ValueError(f"operator produced {classical_lr.shape}, expected {(h, w)}")
+    else:
+        classical_lr = cv2.resize(classical_safe, (w, h), interpolation=cv2.INTER_AREA)
+        deep_lr = cv2.resize(deep_safe, (w, h), interpolation=cv2.INTER_AREA)
     valid = _resolve_valid(lr_depth, valid_mask)
     err_c = np.abs(classical_lr - lr_depth)
     err_d = np.abs(deep_lr - lr_depth)
@@ -57,8 +63,21 @@ def estimate_confidence(
     valid_mask=None,
     rgb=None,
     scale=4,
+    *,
+    adaptive=True,
+    max_classical_weight=0.35,
+    operator=None,
 ) -> tuple:
-    """Return ``(W_c, W_d)`` float32 arrays in [0, 1] with ``W_c + W_d == 1``."""
+    """Return normalized branch weights.
+
+    Adaptive weighting is deliberately conservative: classical support is gated by
+    depth/RGB edge agreement and a measurement residual, rather than treating an RGB
+    edge or a low residual as proof of higher HR accuracy.  ``adaptive=False`` is the
+    zero-classical ablation (apart from invalid deep predictions).
+    ``max_classical_weight`` caps the classical contribution in [0, 1].
+    """
+    if not 0.0 <= max_classical_weight <= 1.0:
+        raise ValueError("max_classical_weight must be in [0, 1]")
     Dc = np.asarray(classical_depth, dtype=np.float32)
     Dd = np.asarray(deep_depth, dtype=np.float32)
     if Dc.shape != Dd.shape:
@@ -74,7 +93,7 @@ def estimate_confidence(
     # safer than assigning a large weight merely because a pixel is nearby.
     valid = _resolve_valid(lr_depth, valid_mask)
     if valid.any():
-        advantage_lr = _measurement_advantage(Dc, Dd, lr_depth, valid_mask)
+        advantage_lr = _measurement_advantage(Dc, Dd, lr_depth, valid_mask, operator)
         advantage = cv2.resize(advantage_lr, (W, H), interpolation=cv2.INTER_LINEAR)
     else:
         advantage = np.zeros((H, W), np.float32)
@@ -88,13 +107,17 @@ def estimate_confidence(
         except Exception:
             agreement = np.zeros((H, W), np.float32)
 
-    # Keep deep dominant by default. Extra classical weight requires both boundary
-    # support and a meaningful measurement advantage. Strongly supported boundaries
-    # may use a larger contribution so a blurred deep edge can actually be repaired.
-    boundary_support = 0.35 * edge_score + 0.65 * agreement
-    advantage_gate = np.clip((advantage - 0.15) / 0.85, 0.0, 1.0)
-    wc = 0.01 + 0.34 * boundary_support * advantage_gate
-    wc = np.clip(wc, 0.0, 0.35).astype(np.float32)
+    if adaptive:
+        # Keep deep dominant by default. Extra classical weight requires both boundary
+        # support and a meaningful measurement advantage. Strongly supported boundaries
+        # may use a larger contribution so a blurred deep edge can actually be repaired.
+        cap = float(max_classical_weight)
+        boundary_support = 0.35 * edge_score + 0.65 * agreement
+        advantage_gate = np.clip((advantage - 0.15) / 0.85, 0.0, 1.0)
+        wc = 0.01 + (cap - 0.01) * boundary_support * advantage_gate
+        wc = np.clip(wc, 0.0, cap).astype(np.float32)
+    else:
+        wc = np.zeros((H, W), np.float32)
 
     # A branch with invalid/absent output must never be trusted there.
     invalid_classical = ~np.isfinite(Dc) | (Dc <= 0)

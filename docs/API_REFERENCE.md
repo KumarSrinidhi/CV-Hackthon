@@ -32,11 +32,18 @@ Raises `DeepModelUnavailableError` without a checkpoint. Scales: 4, 8, 16.
 ```python
 from hybrid import hybrid_hr_depth, ablations
 
-hybrid_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4, *, use_consistency=True,
-                deep_fn=None, return_intermediates=False) -> (H, W) float32
+hybrid_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4, *,
+                use_consistency=True, consistency_strength=0.25, consistency_iterations=1,
+                classical_weight=None, classical_alpha=None,
+                use_refinement=False, use_boundary_refinement=None,
+                adaptive=True, max_classical_weight=0.35, operator=None,
+                deep_fn=None, return_intermediates=False,
+                fusion="v2", skip_classical=None) -> (H, W) float32
 ```
 
-Raises `NotImplementedError` when the deep branch is unavailable. `deep_fn` is an
+Degrades to the classical branch with `deep_available=False` when the deep
+branch is unavailable; evaluation pre-checks the checkpoint and reports
+"not evaluated" instead. `deep_fn` is an
 injectable `deep_fn(lr_depth, hr_rgb, valid_mask, scale) -> (H, W) float32`.
 
 ## Hybrid internals
