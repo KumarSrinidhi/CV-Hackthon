@@ -43,6 +43,15 @@ results, and downloads the generated depth files. SGNet checkpoints are not stor
 Git; upload them in the optional checkpoint cell to enable the deep branch. Without
 them, the notebook reports and uses the explicit classical fallback.
 
+### Kaggle
+
+[`KAGGLE_DEPTH_COMPLETION_EXPERIMENTS.ipynb`](./KAGGLE_DEPTH_COMPLETION_EXPERIMENTS.ipynb)
+runs the batch evaluation matrix on Kaggle: HF NYU val at ×2/×4/×8 (clean, noise,
+holes) plus the official 20-sample hackathon testset with its native missing depth.
+It reports every method through the shared `eval/evaluate.py` harness, marks
+`deep`/`hybrid*` as *not evaluated* when SGNet checkpoints are absent, and prints
+the honesty protocol for quoting run numbers. See `docs/EVALUATION_METHODOLOGY.md`.
+
 The full suite needs `torch` for one deep-dependent test
 (`test_consistency_sweep_method_name_is_supported`); without torch that single test fails
 and everything else passes. See `docs/APP_GUIDE.md` for the demo workflow and deployment.
