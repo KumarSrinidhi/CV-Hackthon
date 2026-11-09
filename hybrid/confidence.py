@@ -1,10 +1,4 @@
-"""Conservative, measurement-aware branch confidence estimation.
-
-The deep branch is the primary estimator because validation shows that the
-classical branch is substantially less accurate on flat regions. The classical
-branch receives a small default contribution and is allowed to contribute more
-only where it has boundary support and explains the measured LR depth better.
-"""
+"""Input-quality fusion weights and spatial confidence for ablations."""
 
 from __future__ import annotations
 
@@ -12,6 +6,18 @@ import cv2
 import numpy as np
 
 from classical.adaptive_jbu import edge_evidence
+from data.preprocessing import estimate_relative_noise
+
+
+def quality_blend(lr_depth, valid_mask=None):
+    """Choose classical weight and consistency damping from observed LR quality."""
+    depth = np.asarray(lr_depth, dtype=np.float32)
+    valid = _resolve_valid(depth, valid_mask)
+    noise = estimate_relative_noise(depth, valid)
+    missing = 1.0 - float(valid.mean())
+    noise_level = float(np.clip((noise - 0.003) / 0.006, 0, 1))
+    hole_level = float(np.clip((missing - 0.04) / 0.19, 0, 1))
+    return 0.02 + max(0.63 * noise_level, 0.88 * hole_level), 1.0 - noise_level
 
 
 def _resolve_valid(depth, valid_mask):

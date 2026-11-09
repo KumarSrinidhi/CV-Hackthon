@@ -53,12 +53,16 @@ def enforce_consistency(fused_hr, lr_depth, valid_mask=None, scale=4, operator=N
     }.get(mode)
     if interpolation is None:
         raise ValueError(f"mode must be one of ('bicubic', 'bilinear', 'nearest'); got '{mode}'")
+    if not valid.all() and interpolation == cv2.INTER_CUBIC:
+        # Signed cubic lobes can nearly cancel mask support and amplify the
+        # normalized residual around holes. Linear interpolation keeps it bounded.
+        interpolation = cv2.INTER_LINEAR
     support_lr = valid.astype(np.float32)
     residual_hr = cv2.resize(residual_lr, (W, H), interpolation=interpolation)
     support_hr = cv2.resize(support_lr, (W, H), interpolation=interpolation)
     residual_hr = np.divide(
         residual_hr,
-        np.maximum(support_hr, 1e-6),
+        np.maximum(support_hr, 0.5),
         out=np.zeros_like(residual_hr),
         where=support_hr > 1e-6,
     )

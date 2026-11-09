@@ -101,6 +101,13 @@ def test_consistency_does_not_spread_invalid_hole_as_zero():
     np.testing.assert_allclose(out, 4.0, atol=1e-5)
 
 
+def test_consistency_does_not_amplify_residual_next_to_missing_pixels():
+    lr = np.array([[3, 0, 0, 5], [0, 0, 5, 3], [0, 3, 0, 0]], np.float32)
+    pred = np.full((12, 16), 4, np.float32)
+    corrected = enforce_consistency(pred, lr, lr > 0, 4)
+    assert np.max(np.abs(corrected - pred)) <= 1.0
+
+
 def test_hybrid_raises_when_deep_unavailable(no_deep_checkpoint):
     lr, rgb = _synthetic(4)
     out, inter = hybrid_hr_depth(lr, rgb, None, 4, return_intermediates=True)
@@ -114,6 +121,24 @@ def test_hybrid_injectable_deep_fn():
     assert inter["deep_available"] is True
     np.testing.assert_allclose(inter["deep"], 3.0)
     assert out.shape == (16, 16)
+
+
+def test_default_fusion_uses_classical_on_noisy_or_incomplete_depth():
+    lr = np.full((16, 16), 4.0, np.float32)
+    rgb = np.zeros((64, 64, 3), np.uint8)
+    deep = _fake_deep(shape=rgb.shape[:2])
+
+    def run(depth, mask=None):
+        return hybrid_hr_depth(depth, rgb, mask, 4, deep_fn=deep, return_intermediates=True)[1]
+
+    assert run(lr)["confidence_classical"].mean() == pytest.approx(0.02)
+    noisy = lr * np.random.default_rng(1).normal(1, 0.02, lr.shape)
+    out = run(noisy)
+    assert out["confidence_classical"].mean() == pytest.approx(0.65)
+    assert not out["consistency_enabled"]
+    valid = np.ones_like(lr, dtype=bool)
+    valid[:, :4] = False
+    assert run(lr, valid)["confidence_classical"].mean() == pytest.approx(0.90)
 
 
 def test_hybrid_handles_invalid_deep_output():

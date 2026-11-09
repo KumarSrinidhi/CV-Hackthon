@@ -46,6 +46,7 @@ def test_hybrid_degrades_gracefully_without_deep(monkeypatch, tmp_path):
     out, inter = hybrid_hr_depth(lr, rgb, None, 4, return_intermediates=True)
     assert out.shape == (16, 16) and np.isfinite(out).all()
     assert inter["deep_available"] is False
+    np.testing.assert_array_equal(out, classical_hr_depth(lr, rgb, None, 4))
 
 
 def test_scale_two_classical_and_hybrid():

@@ -3,7 +3,7 @@
     hybrid_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4) -> (H, W) float32
 
 The hybrid combines the classical edge-preserving reconstruction with the deep
-branch using spatial confidence maps, then applies boundary-aware refinement and,
+branch using weights based on input quality, then applies boundary-aware refinement and,
 where the forward degradation operator is known, measurement-consistency correction.
 
 If the deep branch is unavailable (no checkpoint, unsupported scale, missing torch,
@@ -19,13 +19,13 @@ from classical import classical_hr_depth
 from classical.jbu import to_float_rgb
 
 from .boundary_refinement import refine_hybrid_depth
-from .confidence import estimate_confidence
+from .confidence import estimate_confidence, quality_blend
 from .consistency import enforce_consistency
 from .fusion import fuse, fuse_fixed
 
 
 def _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale):
-    """Lazy import: use routed path when both checkpoints are present, else plain deep.
+    """Lazy import: use routed path when quality routing is available, else plain deep.
 
     Returns (depth, route_info).  route_info is None when routing is unavailable.
     Passes the ORIGINAL LR validity mask (before any hole filling).
@@ -39,14 +39,14 @@ def _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale):
 
 
 def _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn):
-    """Return (depth, available, route_info) where available=False means deep was unavailable."""
+    """Return the deep prediction, routing metadata and any fallback reason."""
     if deep_fn is not None:
-        return deep_fn(lr_depth, hr_rgb, valid_mask, scale), True, None
+        return deep_fn(lr_depth, hr_rgb, valid_mask, scale), None, None
     try:
         depth, route_info = _deep_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
-        return depth, True, route_info
-    except Exception:  # noqa: BLE001 -- deep branch is optional
-        return None, False, None
+        return depth, route_info, None
+    except Exception as exc:  # noqa: BLE001 -- deep branch is optional
+        return None, None, f"{type(exc).__name__}: {exc}"
 
 
 def hybrid_hr_depth(
@@ -72,38 +72,40 @@ def hybrid_hr_depth(
     by users who want to supply their own model). It must match the signature
     ``deep_fn(lr_depth, hr_rgb, valid_mask, scale) -> (H, W) float32``.
     ``classical_weight`` selects a fixed classical contribution for ablations;
-    when omitted, the normal conservative spatial confidence fusion is used.
+    when omitted, the weight adapts to noise and missing LR measurements.
     Boundary refinement is opt-in because validation shows that full-image
     refinement can blur otherwise accurate deep predictions. Refinement and
     consistency can be enabled independently with ``use_refinement`` and
     ``use_consistency``.
 
-    Raises ``NotImplementedError`` when the deep branch is unavailable (no
-    checkpoint, unsupported scale, or missing torch), so evaluation can report
-    "not evaluated" honestly. If the deep branch runs but returns invalid pixels,
-    those pixels are handled by the confidence/fusion stages.
+    Returns the classical result directly when the deep branch is unavailable
+    (no checkpoint, unsupported scale, or missing torch). If the deep branch
+    returns invalid pixels, the confidence/fusion stages handle those pixels.
     """
     rgb_f = to_float_rgb(np.asarray(hr_rgb))
 
-    Dc = classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
-    Dd, deep_available, route_info = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
+    Dc = classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale, mode=consistency_mode)
+    Dd, route_info, deep_error = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
+    deep_available = deep_error is None
 
     if deep_available:
-        if classical_weight is None:
-            Wc, Wd = estimate_confidence(Dc, Dd, lr_depth, valid_mask, rgb_f, scale)
-            Df = fuse(Dc, Dd, Wc, Wd)
-        else:
-            if not 0.0 <= classical_weight <= 1.0:
-                raise ValueError("classical_weight must be between 0 and 1")
-            Wc = np.full_like(Dc, classical_weight, dtype=np.float32)
-            Wd = np.full_like(Dd, 1.0 - classical_weight, dtype=np.float32)
-            Df = fuse_fixed(Dc, Dd, classical_weight)
+        weight = classical_weight
+        if weight is None:
+            weight, damping = quality_blend(lr_depth, valid_mask)
+            consistency_strength *= damping
+        if not 0.0 <= weight <= 1.0:
+            raise ValueError("classical_weight must be between 0 and 1")
+        Wc = np.full_like(Dc, weight, dtype=np.float32)
+        Wd = np.full_like(Dd, 1.0 - weight, dtype=np.float32)
+        Df = fuse_fixed(Dc, Dd, weight)
+        use_consistency = use_consistency and consistency_strength > 0
     else:
-        # Deep unavailable: use classical output directly, full confidence on classical
-        Dd = Dc.copy()
+        # The standalone solver already fits the measurements.
         Wc = np.ones_like(Dc)
         Wd = np.zeros_like(Dc)
-        Df = Dc.copy()
+        Df = Dc
+        use_refinement = False
+        use_consistency = False
 
     Df_boundary = (
         refine_hybrid_depth(
@@ -129,6 +131,7 @@ def hybrid_hr_depth(
             "classical": Dc,
             "deep": Dd if deep_available else None,
             "deep_available": deep_available,
+            "deep_error": deep_error,
             "route_info": route_info,
             "confidence_classical": Wc,
             "confidence_deep": Wd,
@@ -153,7 +156,9 @@ def ablations(lr_depth, hr_rgb, valid_mask=None, scale=4, deep_fn=None):
     """
     rgb_f = to_float_rgb(np.asarray(hr_rgb))
     Dc = classical_hr_depth(lr_depth, hr_rgb, valid_mask, scale)
-    Dd = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
+    Dd, _, deep_error = _run_deep(lr_depth, hr_rgb, valid_mask, scale, deep_fn)
+    if deep_error is not None:
+        raise NotImplementedError(deep_error)
 
     Wc, Wd = estimate_confidence(Dc, Dd, lr_depth, valid_mask, rgb_f, scale)
     confidence_fusion = fuse(Dc, Dd, Wc, Wd)
