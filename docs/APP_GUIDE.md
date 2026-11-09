@@ -8,7 +8,7 @@ upload / CLI args
    -> main.reconstruct    (reads configs/default_config.yaml via app/config.py)
         classical methods -> classical.pipeline.reconstruct
         deep              -> deep.inference.deep_hr_depth
-        hybrid            -> hybrid.hybrid_hr_depth(classical_alpha=0.02, consistency on)
+        hybrid            -> hybrid.hybrid_hr_depth(input-adaptive fusion, consistency on)
                              (explicit classical fallback if deep unavailable / scale x2)
    -> app/visualization.py (colormap, boundaries, confidence, error map, side-by-side, PNG/NPY)
    -> CLI files  or  Gradio UI (app/ui.py: process())

@@ -3,13 +3,13 @@
 An edge-aware, hybrid depth reconstruction system that transforms **sparse or
 low-resolution depth maps** into **dense, high-resolution depth**, preserving object
 boundaries and depth discontinuities. It combines classical computer vision,
-deep-learning depth super-resolution, and a fixed-weight (alpha 0.02) hybrid fusion with measurement consistency.
+deep-learning depth super-resolution, and input-adaptive hybrid fusion with measurement consistency.
 
 ## What is implemented
 
 | Layer | Module | Status |
 |-------|--------|--------|
-| Classical | `classical/` — nearest/bilinear/bicubic, joint bilateral upsampling (JBU), guided filter, hole filling, depth-discontinuity detection, boundary refinement, adaptive JBU | Implemented & tested |
+| Classical | `classical/` — masked measurement fitting with RGB-guided depth regularization, plus interpolation, JBU and guided-filter baselines | Implemented & tested |
 | Deep | `deep/` — SGNet (guided depth super-resolution), dataset loaders, degradation, preprocessing, inference | Implemented (needs checkpoint) |
 | Hybrid | `hybrid/` — confidence estimation, adaptive fusion, boundary refinement, measurement consistency | Implemented & tested (needs deep branch) |
 | Evaluation | `eval/` — RMSE, MAE, PSNR, SSIM, boundary RMSE, edge F1, benchmark | Implemented |
@@ -52,14 +52,15 @@ and everything else passes. See `docs/APP_GUIDE.md` for the demo workflow and de
 - `nearest`, `bilinear`, `bicubic` — interpolation baselines
 - `jbu` — joint bilateral upsampling
 - `guided` — guided filter
-- `classical`, `adaptive_jbu`, `refined_jbu` — classical edge-preserving variants
+- `classical` — iterative reconstruction that fits the observed LR samples and sharpens depth-supported edges with RGB guidance
+- `adaptive_jbu`, `refined_jbu` — bilateral upsampling variants
 - `deep` — SGNet (scales 4/8/16; requires the official checkpoint)
-- `hybrid` — **fixed alpha 0.02 fusion of classical + deep, then measurement consistency** (frozen config)
+- `hybrid` — blends classical and deep predictions based on LR noise and missing measurements
 
 ## Stable interfaces
 
 ```python
-classical_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4) -> (H, W) float32
+classical_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4, *, mode="bicubic") -> (H, W) float32
 deep_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4) -> (H, W) float32
 hybrid_hr_depth(lr_depth, hr_rgb, valid_mask=None, scale=4) -> (H, W) float32
 ```
@@ -71,38 +72,22 @@ Conventions (frozen in `data/preprocessing.py`):
 - Output is `(H, W)` float32 in the same unit as `lr_depth`.
 - Invalid depth (<= 0, NaN, Inf) is never treated as a measurement.
 
+The classical solver defaults to the antialiased bicubic sampling model used by the
+project's benchmarks. Pass `mode="bilinear"` or `mode="nearest"` when the LR data
+was produced by that sampling model. Hole fills initialize the estimate, and only
+valid LR pixels contribute to its measurement error.
+
 ## Hybrid fusion
 
-**Frozen final configuration** (`configs/default_config.yaml`, section `hybrid`):
-`D_f = 0.02 * D_c + 0.98 * D_d`, followed by measurement-consistency correction
-(`strength 0.25`, 1 iteration); boundary refinement off. It was chosen on NYU validation
-(30 images, x4): fixed alpha 0.02 gave the lowest RMSE (0.0123, vs. 0.0123 for the deep
-branch alone), so the **gain over deep-only is marginal** and the classical branch is a
-safeguard more than a contributor. The adaptive confidence fusion described below remains
-available by setting `hybrid.classical_alpha: null`.
+The default `hybrid.classical_alpha: null` adapts the classical fraction to the
+noise and missing pixels in the LR input. The blend starts at 2% for clean input
+and can reach 65% for noisy input or 90% for incomplete input. A numeric
+`classical_alpha` in `configs/default_config.yaml` selects a fixed fraction.
 
-The general form of the fusion is the classical reconstruction `D_c` and deep reconstruction `D_d`
-per pixel:
-
-```
-D_f = W_c * D_c + W_d * D_d,   W_c + W_d == 1
-```
-
-`W_c`/`W_d` are normalized confidence scores from three pieces of evidence:
-1. **Structure** — normalized depth-gradient magnitude (classical preferred on edges).
-2. **Measurement proximity** — distance to the nearest valid LR pixel (classical
-   preferred near measurements, deep preferred far away).
-3. **RGB/depth edge agreement** — where an RGB edge agrees with a depth
-   discontinuity (classical preferred).
-
-Boundary refinement is optional and disabled by default. Because the forward degradation
-operator is known (bicubic), the fused map receives a damped measurement-consistency correction
-`r_LR = D_LR - S(D_f)`. See `docs/HYBRID_FUSION.md`.
-
-The weights are **normalized confidence scores, not calibrated probabilities**. A
-deep branch that is unavailable (no checkpoint / unsupported scale) makes
-`hybrid_hr_depth` raise `NotImplementedError`, so evaluation reports it as
-"not evaluated" rather than silently substituting classical output.
+The measurement-consistency correction uses the bicubic sampling model. The
+adaptive setting reduces its strength as estimated noise increases. Boundary
+refinement is disabled by default. If SGNet is unavailable, the app reports the
+fallback and returns the standalone classical reconstruction.
 
 ## Deep-learning branch (SGNet)
 
