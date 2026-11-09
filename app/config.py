@@ -2,8 +2,8 @@
 
 Reads ``configs/default_config.yaml`` (or the file named by the ``P4_CONFIG``
 environment variable) and merges it over built-in defaults, so the app keeps
-working if the file or PyYAML is missing. The built-in defaults below mirror the
-frozen hybrid choice: **fixed alpha 0.02 + measurement consistency**.
+working if the file or PyYAML is missing. The built-in defaults use input-adaptive
+fusion and measurement consistency.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pathlib import Path
 
 DEFAULTS = {
     "hybrid": {
-        "classical_alpha": 0.02,
+        "classical_alpha": None,
         "use_consistency": True,
         "consistency_strength": 0.25,
         "consistency_iterations": 1,

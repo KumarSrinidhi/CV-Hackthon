@@ -26,26 +26,21 @@ def fake_deep(monkeypatch):
     """Stand-in deep branch (no torch / checkpoint needed)."""
     def fn(lr_depth, hr_rgb, valid_mask, scale):
         return cv2.resize(np.asarray(lr_depth, np.float32), (16, 16), interpolation=cv2.INTER_CUBIC) * 1.01
-    monkeypatch.setattr(hp, "_deep_hr_depth", fn)
+    monkeypatch.setattr(hp, "_deep_hr_depth", lambda *args: (fn(*args), None))
     return fn
 
 
-@pytest.fixture
-def no_deep(monkeypatch, tmp_path):
-    monkeypatch.setenv("SGNET_CKPT_DIR", str(tmp_path / "empty_ckpt"))
-
-
 # ---- config -------------------------------------------------------------
-def test_frozen_hybrid_config_is_alpha_002_plus_consistency():
+def test_default_hybrid_config_is_adaptive_plus_consistency():
     kw = appcfg.hybrid_kwargs(appcfg.load_config())
-    assert kw["classical_weight"] == 0.02
+    assert kw["classical_weight"] is None
     assert kw["use_consistency"] is True
     assert kw["use_refinement"] is False
 
 
 def test_config_file_missing_falls_back_to_defaults(tmp_path):
     cfg = appcfg.load_config(tmp_path / "nope.yaml")
-    assert cfg["hybrid"]["classical_alpha"] == 0.02
+    assert cfg["hybrid"]["classical_alpha"] is None
 
 
 def test_config_rejects_bad_alpha(tmp_path):
@@ -87,7 +82,9 @@ def test_mask_validation():
 # ---- hybrid wiring ------------------------------------------------------
 def test_hybrid_uses_fixed_alpha_and_consistency(fake_deep):
     lr, rgb = _scene()
-    res = reconstruct(rgb, lr, None, 4)
+    cfg = appcfg.load_config()
+    cfg["hybrid"]["classical_alpha"] = 0.02
+    res = reconstruct(rgb, lr, None, 4, cfg)
     assert not res["fallback"] and res["method"] == "hybrid"
     inter = res["intermediates"]
     assert np.allclose(inter["confidence_classical"], 0.02)
@@ -100,12 +97,25 @@ def test_hybrid_uses_fixed_alpha_and_consistency(fake_deep):
     assert not np.allclose(res["depth"], fuse_fixed(Dc, Dd, 0.02))
 
 
-def test_hybrid_degrades_without_deep(no_deep):
+def test_hybrid_degrades_without_deep(monkeypatch, tmp_path):
+    from app.ui import process
+
+    def unavailable(*args):
+        raise OSError("PyTorch runtime could not load")
+
+    monkeypatch.setattr(hp, "_deep_hr_depth", unavailable)
     lr, rgb = _scene()
     res = reconstruct(rgb, lr, None, 4)
     assert not res["fallback"] and res["method"] == "hybrid"
     assert not res["intermediates"].get("deep_available", True)
-    assert any("classical" in n.lower() for n in res["notes"])
+    np.testing.assert_array_equal(res["depth"], classical_hr_depth(lr, rgb, None, 4))
+
+    depth_path = tmp_path / "lr.npy"
+    np.save(depth_path, lr)
+    status = process(rgb, str(depth_path), None, 4, export_dir=str(tmp_path))["status"]
+    assert "Pipeline: classical fallback" in status
+    assert status.count("Deep branch unavailable") == 1
+    assert "PyTorch runtime could not load" in status
 
 
 def test_hybrid_scale2_is_classical_fallback():
@@ -157,7 +167,7 @@ def test_cli_reports_clear_errors(tmp_path):
 
 # ---- UI core ------------------------------------------------------------
 def test_ui_process_outputs_and_exports(tmp_path, fake_deep):
-    from app.ui import process
+    from app.ui import _metrics_html, process
 
     lr, rgb = _scene()
     np.save(tmp_path / "lr.npy", lr)
@@ -168,8 +178,50 @@ def test_ui_process_outputs_and_exports(tmp_path, fake_deep):
     for key in ("depth", "boundaries", "conf_classical", "conf_deep", "error"):
         assert o[key].shape == (16, 16, 3) and o[key].dtype == np.uint8
     assert o["comparison"].ndim == 3
-    assert "0.02" in o["status"] and "RMSE" in o["status"]
+    assert "input-adaptive (classical 2.0%, deep 98.0%)" in o["status"]
+    assert "Branch RMSE" in o["status"]
+    report = _metrics_html(o["run_metrics"], o["metrics"])
+    assert "Ground-truth accuracy" in report and "Classical RMSE" in report and "Deep RMSE" in report
     assert len(o["files"]) == 2 and all(__import__("os").path.exists(f) for f in o["files"])
+
+
+def test_ui_reports_run_metrics_without_ground_truth(tmp_path, monkeypatch):
+    from app.ui import _metrics_html, process
+
+    monkeypatch.setattr(hp, "_run_deep", lambda *args: (None, None, "Test runtime unavailable"))
+    rgb = np.zeros((32, 32, 3), np.uint8)
+    lr = np.full((8, 8), 6, np.float32)
+    mask = np.ones_like(lr)
+    mask[:, :2] = 0
+    lr[:, :2] = 99
+    depth_path, mask_path = tmp_path / "lr.npy", tmp_path / "mask.npy"
+    np.save(depth_path, lr)
+    np.save(mask_path, mask)
+
+    out = process(rgb, depth_path, mask_path, 4, export_dir=str(tmp_path))
+    assert out["metrics"] is None
+    assert out["run_metrics"]["lr_coverage"] == 0.75
+    assert out["run_metrics"]["output_coverage"] == 1
+    assert out["run_metrics"]["measurement_rmse"] == pytest.approx(0)
+    report = _metrics_html(out["run_metrics"], out["metrics"])
+    assert "75.0%" in report and "LR fit RMSE" in report
+    assert "Add aligned ground truth" in report and "PSNR" not in report
+
+
+def test_ui_x8_masks_missing_ground_truth_and_downsamples_full_size_depth(tmp_path, monkeypatch):
+    from app.ui import process
+
+    monkeypatch.setattr(hp, "_run_deep", lambda *args: (None, None, "Test runtime unavailable"))
+    rgb = np.zeros((64, 64, 3), np.uint8)
+    depth = np.full((64, 64), 6, np.float32)
+    depth[:, 24:40] = 0
+    depth_path = tmp_path / "depth.npy"
+    np.save(depth_path, depth)
+
+    out = process(rgb, depth_path, None, 8, depth_path, export_dir=str(tmp_path))
+    assert out["metrics"]["rmse"] == 0
+    assert "Depth downsampled from 64x64 to 8x8 using bicubic" in out["status"]
+    assert "LR input vs bicubic-downsampled GT RMSE 0.0000 over 48/64 LR pixels" in out["status"]
 
 
 def test_ui_process_requires_inputs(tmp_path):

@@ -3,8 +3,8 @@
     python main.py --rgb RGB.png --depth depth.npy --scale 4 --output results/out
 
 The pipeline always runs the full hybrid workflow:
-  Classical branch (A1 hole-fill → A2 bicubic → A3 JBU → A4 boundary refinement)
-  + Deep branch (SGNet guided SR) → Hybrid fusion (alpha=0.02) → Measurement consistency.
+  Classical branch (masked measurement fit with RGB-guided depth regularization)
+  + Deep branch (SGNet guided SR) → Input-adaptive fusion → Measurement consistency.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from app.visualization import (
     to_rgb_uint8,
 )
 from classical.pipeline import reconstruct as classical_reconstruct
+from data.preprocessing import make_valid_mask
 
 
 def load_image(path):
@@ -90,7 +91,7 @@ def reconstruct(rgb, lr_depth, valid_mask=None, scale=4, config=None):
     out["depth"] = hr
     out["intermediates"] = inter
     if not inter.get("deep_available", True):
-        out["notes"].append("Deep branch unavailable (no checkpoint) — running classical pipeline.")
+        out["notes"].append(f"Deep branch unavailable. {inter['deep_error']}")
     return out
 
 
@@ -169,7 +170,8 @@ def main(argv=None) -> int:
             print(f"WARNING: prediction {pred.shape} and GT {gt.shape} differ; "
                   "resizing prediction for metrics.", file=sys.stderr)
             pred = cv2.resize(pred, (gt.shape[1], gt.shape[0]), interpolation=cv2.INTER_CUBIC)
-        metrics = compute_all_metrics(pred, gt, data_range=cfg["app"]["data_range"])
+        metrics = compute_all_metrics(pred, gt, data_range=cfg["app"]["data_range"],
+                                      valid=make_valid_mask(gt))
         for k, v in metrics.items():
             print(f"  {k}: {v:.4f}" if v == v else f"  {k}: nan")
         err_path = base + "_error.png"

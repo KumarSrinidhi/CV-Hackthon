@@ -2,24 +2,19 @@
 # Workstream: Project Configuration
 # File: configs/default_config.yaml
 # Description: Global project configuration for the application layer and the
-#              frozen hybrid fusion settings.
+#              hybrid fusion settings.
 #
 # Loaded by app/config.py. Every key is optional: a missing key (or a missing
 # file) falls back to the same defaults written here. Override the file path
 # with the P4_CONFIG environment variable.
 
 # ---------------------------------------------------------------------------
-# Hybrid fusion -- FROZEN configuration
+# Hybrid fusion
 # ---------------------------------------------------------------------------
-# Selected on NYU validation (first 30 images, x4, clean bicubic degradation,
-# see results/hybrid_val30_new_variants/summary.md): fixed alpha 0.02 gave the
-# lowest RMSE (0.0122816). The gain over the deep branch alone is small; this
-# is a validation result, not a claim of large improvement.
 hybrid:
-  # Fixed fusion weight on the CLASSICAL branch: D_f = a*D_c + (1-a)*D_d.
-  # The deep branch therefore gets 1 - a = 0.98. Set to null to use the
-  # adaptive confidence-guided fusion instead.
-  classical_alpha: 0.02
+  # null adapts to LR noise and missing pixels. A number in [0, 1] sets a
+  # fixed classical fraction for comparisons.
+  classical_alpha: null
 
   # Measurement-consistency correction r_LR = D_LR - S(D_f), applied only
   # because the synthetic bicubic forward operator is known.
