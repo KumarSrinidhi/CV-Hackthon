@@ -3,7 +3,8 @@
 Rule: original (clean-bicubic) checkpoint ONLY if the LR depth has no holes AND its noise
 estimate is below a calibrated threshold; otherwise the robust fine-tuned checkpoint.
 
-Both checkpoints MUST be present; a missing file raises DeepModelUnavailableError.
+The robust checkpoint is optional. When it is not configured, the available
+scale checkpoint is used for both input-quality routes.
 
 Env:  SGNET_CKPT_X4 (original)   SGNET_CKPT_X4_ROBUST (fine-tuned)   [same for X8/X16]
 Calibrate:  python -m deep.routing --calibrate --root <nyu_root>
@@ -65,12 +66,19 @@ def _require_ckpt(env_var: str, scale: int, label: str) -> str:
 
 
 def _ckpt_for(scale: int, route: str) -> str:
-    """Return the checkpoint path for *route*, requiring both files to be present."""
-    _require_ckpt(f"SGNET_CKPT_X{scale}", scale, "original")
-    _require_ckpt(f"SGNET_CKPT_X{scale}_ROBUST", scale, "robust")
-    if route == "robust":
-        return os.environ[f"SGNET_CKPT_X{scale}_ROBUST"]
-    return os.environ[f"SGNET_CKPT_X{scale}"]
+    """Return the best available checkpoint for the selected input-quality route."""
+    if route == "robust" and os.environ.get(f"SGNET_CKPT_X{scale}_ROBUST"):
+        return _require_ckpt(f"SGNET_CKPT_X{scale}_ROBUST", scale, "robust")
+
+    explicit = os.environ.get(f"SGNET_CKPT_X{scale}")
+    if explicit:
+        return _require_ckpt(f"SGNET_CKPT_X{scale}", scale, "original")
+
+    # Fall back to the standard scale discovery, which also supports the
+    # repository's SGNet_X{scale}_R.pth files.
+    from .deep_model import resolve_checkpoint
+
+    return str(resolve_checkpoint(scale))
 
 
 def deep_hr_depth_routed(lr_depth, hr_rgb, valid_mask=None, scale=4, **kw):

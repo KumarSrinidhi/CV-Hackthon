@@ -96,6 +96,22 @@ def make_valid_mask(
     return m
 
 
+def estimate_relative_noise(depth: np.ndarray, valid: np.ndarray) -> float:
+    """Estimate relative noise from fully measured 2x2 depth neighborhoods."""
+    complete = valid[:-1, :-1] & valid[:-1, 1:] & valid[1:, :-1] & valid[1:, 1:]
+    if np.count_nonzero(complete) < 16:
+        return 0.0
+
+    a = depth[:-1, :-1][complete]
+    b = depth[:-1, 1:][complete]
+    c = depth[1:, :-1][complete]
+    d = depth[1:, 1:][complete]
+    # The mixed difference cancels local planes. A low quantile reduces the
+    # influence of object boundaries, and the local mean removes depth units.
+    relative_detail = np.abs((a + d) - (b + c)) / (0.25 * (a + b + c + d))
+    return float(np.quantile(relative_detail, 0.30) / 0.7706)
+
+
 def resolve_valid_mask(depth: np.ndarray, valid_mask: Optional[np.ndarray]) -> np.ndarray:
     """Mask for the wrapper API. ``None`` -> derived from depth (finite & > 0).
     An explicit mask is honoured but non-finite depth is always invalid."""

@@ -25,6 +25,7 @@ import csv
 import importlib
 import json
 import time
+from functools import partial
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence
 
@@ -82,7 +83,7 @@ def load_method(name: str) -> Method:
         return lambda lr, rgb, valid, scale=4: hybrid_hr_depth(
             lr, rgb, valid, scale, classical_weight=0.02,
             use_refinement=False, use_consistency=True,
-            consistency_mode="bicubic", operator_exact=True,
+            consistency_mode="bicubic", consistency_strength=0.25,
         )
     if name not in BRANCHES:
         raise MethodUnavailable(f"unknown method '{name}'")
@@ -94,6 +95,10 @@ def load_method(name: str) -> Method:
     fn = getattr(mod, fn_name, None)
     if fn is None:
         raise MethodUnavailable(f"{mod_name}.{fn_name} is not implemented yet")
+    if name == "hybrid":
+        from app.config import hybrid_kwargs
+
+        return partial(fn, **hybrid_kwargs())
     return fn
 
 
@@ -130,6 +135,10 @@ def evaluate_methods(
 
                 resolve_checkpoint(dataset.scale)
             callables[name] = load_method(name)
+            if name == "classical":
+                callables[name] = partial(callables[name], mode=dataset.degradation.mode)
+            elif name == "hybrid":
+                callables[name] = partial(callables[name], consistency_mode=dataset.degradation.mode)
         except MethodUnavailable as e:
             not_eval[name] = str(e)
         except Exception as e:
