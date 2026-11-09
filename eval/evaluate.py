@@ -44,7 +44,6 @@ BASELINES = ("nearest", "bilinear", "bicubic")
 BRANCHES = {
     "classical": ("classical.pipeline", "classical_hr_depth"),
     "deep": ("deep.inference", "deep_hr_depth"),
-    "hybrid": ("hybrid.pipeline", "hybrid_hr_depth"),
 }
 HYBRID_METHODS = {"hybrid", "hybrid_fixed02", "hybrid_adaptive", "hybrid_selected_clean"}
 _CV2 = {"nearest": cv2.INTER_NEAREST, "bilinear": cv2.INTER_LINEAR, "bicubic": cv2.INTER_CUBIC}
@@ -64,27 +63,36 @@ def _make_baseline(kind: str) -> Method:
     return fn
 
 
+def _load_hybrid_method(name):
+    from app.config import hybrid_kwargs
+    from hybrid.pipeline import hybrid_hr_depth
+
+    if name == "hybrid_fixed02":
+        options = dict(classical_weight=0.02, use_consistency=False)
+    elif name == "hybrid_adaptive":
+        options = dict(use_consistency=False)
+    elif name == "hybrid_selected_clean":
+        options = dict(classical_weight=0.02, use_consistency=True, consistency_strength=0.25)
+    else:
+        options = hybrid_kwargs()
+
+    def predict(lr, rgb, valid, scale=4, *, consistency_mode="bicubic"):
+        depth, info = hybrid_hr_depth(
+            lr, rgb, valid, scale, return_intermediates=True,
+            consistency_mode=consistency_mode, **options,
+        )
+        if not info["deep_available"]:
+            raise MethodUnavailable(f"Hybrid inference fell back to classical. {info['deep_error']}")
+        return depth
+
+    return predict
+
+
 def load_method(name: str) -> Method:
     if name in BASELINES:
         return _make_baseline(name)
-    if name == "hybrid_fixed02":
-        from hybrid.pipeline import hybrid_hr_depth
-        return lambda lr, rgb, valid, scale=4: hybrid_hr_depth(
-            lr, rgb, valid, scale, classical_weight=0.02,
-            use_refinement=False, use_consistency=False,
-        )
-    if name == "hybrid_adaptive":
-        from hybrid.pipeline import hybrid_hr_depth
-        return lambda lr, rgb, valid, scale=4: hybrid_hr_depth(
-            lr, rgb, valid, scale, use_refinement=False, use_consistency=False,
-        )
-    if name == "hybrid_selected_clean":
-        from hybrid.pipeline import hybrid_hr_depth
-        return lambda lr, rgb, valid, scale=4: hybrid_hr_depth(
-            lr, rgb, valid, scale, classical_weight=0.02,
-            use_refinement=False, use_consistency=True,
-            consistency_mode="bicubic", consistency_strength=0.25,
-        )
+    if name in HYBRID_METHODS:
+        return _load_hybrid_method(name)
     if name not in BRANCHES:
         raise MethodUnavailable(f"unknown method '{name}'")
     mod_name, fn_name = BRANCHES[name]
@@ -95,10 +103,6 @@ def load_method(name: str) -> Method:
     fn = getattr(mod, fn_name, None)
     if fn is None:
         raise MethodUnavailable(f"{mod_name}.{fn_name} is not implemented yet")
-    if name == "hybrid":
-        from app.config import hybrid_kwargs
-
-        return partial(fn, **hybrid_kwargs())
     return fn
 
 
@@ -137,7 +141,7 @@ def evaluate_methods(
             callables[name] = load_method(name)
             if name == "classical":
                 callables[name] = partial(callables[name], mode=dataset.degradation.mode)
-            elif name == "hybrid":
+            elif name in HYBRID_METHODS:
                 callables[name] = partial(callables[name], consistency_mode=dataset.degradation.mode)
         except MethodUnavailable as e:
             not_eval[name] = str(e)

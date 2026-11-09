@@ -299,3 +299,28 @@ def test_test_split_is_locked_behind_final(nyu_root):
     with pytest.raises(SystemExit):
         eval_main(["--split", "test"])
     assert callable(load_method("bicubic"))
+
+
+def test_evaluate_hybrid_rejects_fallback_and_keeps_later_success(nyu_root, tmp_path, monkeypatch):
+    from hybrid import pipeline
+
+    checkpoint = tmp_path / "SGNet_X4_R.pth"
+    checkpoint.touch()
+    monkeypatch.setenv("SGNET_CKPT_X4", str(checkpoint))
+    calls = 0
+
+    def deep(lr, rgb, valid, scale):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("simulated inference failure")
+        return np.ones(rgb.shape[:2], np.float32), None
+
+    monkeypatch.setattr(pipeline, "_deep_hr_depth", deep)
+    root, _ = nyu_root
+    ds = NYUv2Dataset(root, "val", 4)
+    result = evaluate_methods(ds, ["hybrid"], max_samples=2, verbose=False)
+    hybrid = result["summary"]["hybrid"]
+    assert hybrid["n_ok"] == hybrid["n_failed"] == 1
+    assert "simulated inference failure" in hybrid["failures"][0]
+    assert len(result["per_image"]) == 1
