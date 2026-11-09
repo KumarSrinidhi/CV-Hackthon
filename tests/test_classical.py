@@ -73,7 +73,6 @@ def test_rgb_can_relocate_a_depth_supported_edge():
     rgb = np.zeros((16, 16, 3), np.float32)
     rgb[:, 7:] = 1
     guided = classical_hr_depth(depth, rgb, None, 4)
-    # Full A1→A4 pipeline: left half should be near 2, right half near 5
     assert guided[8, 3] == pytest.approx(2, abs=0.5)
     assert guided[8, 12] == pytest.approx(5, abs=0.5)
 
@@ -99,9 +98,30 @@ def test_public_wrapper_runs_full_pipeline():
     depth = np.array([[2, 3], [5, 6]], np.float32)
     rgb = np.random.default_rng(7).integers(0, 256, (8, 8, 3), dtype=np.uint8)
     out = classical_hr_depth(depth, rgb, None)
-    # Full A1→A4 pipeline produces a valid (8,8) float32 map
     assert out.shape == (8, 8) and out.dtype == np.float32
     assert np.isfinite(out).all()
+
+
+@pytest.mark.parametrize("mode", ["bicubic", "bilinear", "nearest"])
+@pytest.mark.parametrize("scale", [2, 3, 4, 16])
+def test_classical_projection_matches_dataset_sampling(mode, scale):
+    from classical.variational import _resize, _resize_axis
+    from data.degradation import downsample
+
+    image = np.random.default_rng(5).uniform(1, 10, (7 * scale, 3 * scale)).astype(np.float32)
+    rows = _resize_axis(image.shape[0], scale, mode)
+    cols = _resize_axis(image.shape[1], scale, mode)
+    np.testing.assert_allclose(_resize(image, rows, cols), downsample(image, scale, mode), atol=2e-6)
+
+
+def test_classical_dispatch_uses_measurement_mask():
+    depth = np.array([[2, 3, 4], [2, 500, 4]], np.float32)
+    mask = np.ones_like(depth, dtype=bool)
+    mask[1, 1] = False
+    rgb = np.zeros((8, 12, 3), np.uint8)
+    result = reconstruct(depth, rgb, mask, 4, method="classical")
+    depth[1, 1] = np.nan
+    np.testing.assert_array_equal(result, classical_hr_depth(depth, rgb, mask[..., None], 4))
 
 
 def test_jbu_excludes_masked_and_nonfinite_samples_before_accumulation():
