@@ -24,7 +24,7 @@ pip install -r requirements.txt          # or: uv pip install -r requirements.tx
 pip install gradio
 
 # Run reconstruction (add --compare for a side-by-side image, --gt for metrics + error map)
-python main.py --rgb RGB.png --depth depth.npy --scale 4 --method hybrid --output out/
+python main.py --rgb RGB.png --depth depth.npy --scale 4 --output out/
 
 # Web UI (needs gradio)
 python -m app.ui
@@ -43,9 +43,8 @@ results, and downloads the generated depth files. SGNet checkpoints are not stor
 Git; upload them in the optional checkpoint cell to enable the deep branch. Without
 them, the notebook reports and uses the explicit classical fallback.
 
-The full suite needs `torch` for one deep-dependent test
-(`test_consistency_sweep_method_name_is_supported`); without torch that single test fails
-and everything else passes. See `docs/APP_GUIDE.md` for the demo workflow and deployment.
+The full suite includes PyTorch tests and runs CUDA checks when a GPU is
+available. See `docs/APP_GUIDE.md` for the demo workflow and deployment.
 
 ## Reconstruction methods
 
@@ -108,6 +107,8 @@ Metrics: RMSE, MAE, PSNR, SSIM (fixed data range, 10 m for NYU), boundary RMSE
 precision/recall/F1 (depth edges, not RGB edges), latency.
 
 Teammate-produced deep/eval results are preserved under `results/`.
+The [reconstruction audit](results/submission_audit/README.md) records the
+current pipeline's cross-view robustness results and reproduction commands.
 
 ## Datasets
 
@@ -159,9 +160,9 @@ Notes:
 
 ## Limitations
 
-- The deep branch was **not run on this machine** (CPU-only, no SGNet checkpoint,
-  no dataset downloaded); its integration is code-verified and the teammate's
-  `results/` are preserved, but local deep/hybrid inference was not executed.
+- The current [audit](results/submission_audit/README.md) verifies real SGNet
+  and hybrid inference at ×4 and ×8. It uses cropped Middlebury disparity
+  scenes with simulated LR inputs.
 - SGNet supports scales **4, 8, 16** only; scale **2** is classical-only.
 - The web UI requires `gradio` (optional, not installed by default).
 - Confidence weights are normalized heuristics, not calibrated probabilities.
