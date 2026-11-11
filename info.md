@@ -2,14 +2,6 @@
 
 ## Technical Document
 
-**Document style:** ASD-STE100 (Simplified Technical English)
-**Project name:** P4 Edge-Preserving Depth Map Upsampling and Refinement
-**Event:** Computer Vision Hackathon 2026, Problem Statement 4 (P4)
-**Source:** Repository `CV-Hackthon-raksh01`
-**Team:** Rakshitha, Tanush, Rishita, Kumar
-
-> **NOTE:** This document uses the rules of ASD-STE100. Sentences are short. Each term has one meaning. The document states facts from the source files. It does not add new facts.
-
 ---
 
 ### Document overview
@@ -352,8 +344,8 @@ The adaptive rule in `quality_blend` is:
 $$
 \begin{aligned}
 \alpha &= 0.02 + \max\left(0.63\,n,\;0.88\,h\right),\\
-n &= \operatorname{clip}\left(\frac{\text{noise}-0.003}{0.006},\,0,\,1\right),\\
-h &= \operatorname{clip}\left(\frac{\text{missing}-0.04}{0.19},\,0,\,1\right).
+n &= \mathrm{clip}\left(\frac{\mathrm{noise}-0.003}{0.006},\,0,\,1\right),\\
+h &= \mathrm{clip}\left(\frac{\mathrm{missing}-0.04}{0.19},\,0,\,1\right).
 \end{aligned}
 $$
 
@@ -369,10 +361,10 @@ If the forward operator S is known, the system does these steps:
 
 $$
 \begin{aligned}
-r_{\mathrm{LR}} &= D_{\mathrm{LR}} - S(D_f)
+r_{LR} &= D_{LR} - S(D_f)
 && \text{at valid LR pixels only},\\
-D_f' &= D_f + \text{strength}\cdot\operatorname{upsample}
-       \left(r_{\mathrm{LR}}\right).
+D_f' &= D_f + \mathrm{strength}\cdot\mathrm{upsample}
+       \left(r_{LR}\right).
 \end{aligned}
 $$
 
