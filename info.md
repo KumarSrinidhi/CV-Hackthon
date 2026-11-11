@@ -1,9 +1,5 @@
 # P4 Depth Map Upsampling System
 
-## Technical Document
-
----
-
 ### Document overview
 
 | Item | Value |
