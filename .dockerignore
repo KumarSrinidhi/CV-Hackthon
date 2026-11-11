@@ -1,0 +1,20 @@
+.git
+.gitignore
+__pycache__
+**/__pycache__
+*.pyc
+.pytest_cache
+.venv
+venv
+.env
+
+# heavy / not needed at runtime
+datasets/
+checkpoints/
+results/
+tmp/
+docs/
+tests/
+*.pdf
+uv.lock
+pyproject.toml

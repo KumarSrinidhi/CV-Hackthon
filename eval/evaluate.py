@@ -45,6 +45,7 @@ BRANCHES = {
     "deep": ("deep.inference", "deep_hr_depth"),
     "hybrid": ("hybrid.pipeline", "hybrid_hr_depth"),
 }
+HYBRID_METHODS = {"hybrid", "hybrid_fixed02", "hybrid_adaptive", "hybrid_selected_clean"}
 _CV2 = {"nearest": cv2.INTER_NEAREST, "bilinear": cv2.INTER_LINEAR, "bicubic": cv2.INTER_CUBIC}
 
 
@@ -65,6 +66,24 @@ def _make_baseline(kind: str) -> Method:
 def load_method(name: str) -> Method:
     if name in BASELINES:
         return _make_baseline(name)
+    if name == "hybrid_fixed02":
+        from hybrid.pipeline import hybrid_hr_depth
+        return lambda lr, rgb, valid, scale=4: hybrid_hr_depth(
+            lr, rgb, valid, scale, classical_weight=0.02,
+            use_refinement=False, use_consistency=False,
+        )
+    if name == "hybrid_adaptive":
+        from hybrid.pipeline import hybrid_hr_depth
+        return lambda lr, rgb, valid, scale=4: hybrid_hr_depth(
+            lr, rgb, valid, scale, use_refinement=False, use_consistency=False,
+        )
+    if name == "hybrid_selected_clean":
+        from hybrid.pipeline import hybrid_hr_depth
+        return lambda lr, rgb, valid, scale=4: hybrid_hr_depth(
+            lr, rgb, valid, scale, classical_weight=0.02,
+            use_refinement=False, use_consistency=True,
+            consistency_mode="bicubic", operator_exact=True,
+        )
     if name not in BRANCHES:
         raise MethodUnavailable(f"unknown method '{name}'")
     mod_name, fn_name = BRANCHES[name]
@@ -106,9 +125,15 @@ def evaluate_methods(
             callables[name] = methods[name]
             continue
         try:
+            if name in HYBRID_METHODS:
+                from deep.deep_model import resolve_checkpoint
+
+                resolve_checkpoint(dataset.scale)
             callables[name] = load_method(name)
         except MethodUnavailable as e:
             not_eval[name] = str(e)
+        except Exception as e:
+            not_eval[name] = f"{type(e).__name__}: {e}"
 
     rows: List[dict] = []
     failures: Dict[str, List[str]] = {k: [] for k in callables}

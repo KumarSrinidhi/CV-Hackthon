@@ -1,4 +1,5 @@
-# Team Owner: Tanush
-# Workstream: Classical Computer Vision
-# Module: classical/__init__.py
+"""Classical computer vision branch."""
 
+from .classical_hr_depth import classical_hr_depth
+
+__all__ = ["classical_hr_depth"]

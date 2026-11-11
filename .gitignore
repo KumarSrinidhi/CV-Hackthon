@@ -1,9 +1,10 @@
-# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized files
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
-# Virtual Environments
+# Virtual environments
 venv/
 .venv/
 env/
@@ -37,11 +38,10 @@ wheels/
 nosetests.xml
 coverage.xml
 *.cover
-*.py,cover
 htmlcov/
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
+# Jupyter checkpoints
+.ipynb_checkpoints/
 
 # Model weights, checkpoints and pretrained models
 *.pt
@@ -53,9 +53,16 @@ weights/
 checkpoints/
 pretrained/
 
-# Datasets and large data files
+# Datasets and large data files (track data/*.py source, ignore raw datasets)
 datasets/
 data/raw/
+data/*.mat
+data/*.h5
+data/*.hdf5
+data/*.tar
+data/*.tar.gz
+data/*.zip
+*.mat
 *.h5
 *.hdf5
 *.tar
@@ -66,20 +73,24 @@ data/raw/
 logs/
 runs/
 wandb/
-results/
 outputs/
 *.log
 
-# IDEs and Editors
+# Temporary scratch space (development work only; keep permanent evidence in docs/ or results/)
+tmp/
+
+# IDEs and editors
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Operating System files
+# OS files
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Tool specific caches
+# Tool caches
 .commandcode/
+
+/checkpoints/
