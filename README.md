@@ -18,16 +18,40 @@ deep-learning depth super-resolution, and a fixed-weight (alpha 0.02) hybrid fus
 ## Quick start
 
 ```bash
-# Environment (Python 3.12+)
-pip install -r requirements.txt          # or: uv pip install -r requirements.txt
-# For the web UI only:
-pip install gradio
+# Clone
+git clone https://github.com/KumarSrinidhi/CV-Hackthon.git
+cd CV-Hackthon
 
+# Web UI environment (Python 3.12, recommended)
+py -3.12 -m venv .venv
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+# macOS/Linux:
+# source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.web.txt
+
+# Start the web UI
+python app.py
+# Open http://127.0.0.1:8080
+```
+
+The web requirements are pinned so a fresh clone uses the same Gradio version
+and UI component behavior as the verified application. The web image does not
+include PyTorch or SGNet checkpoints; without those optional assets the app
+uses the clearly labelled classical fallback.
+
+For the full development and evaluation environment:
+
+```bash
+# Python 3.12+
+pip install -r requirements.txt          # or: uv pip install -r requirements.txt
+pip install gradio
+```
+
+```bash
 # Run reconstruction (add --compare for a side-by-side image, --gt for metrics + error map)
 python main.py --rgb RGB.png --depth depth.npy --scale 4 --method hybrid --output out/
-
-# Web UI (needs gradio)
-python -m app.ui
 
 # Run tests
 pytest tests/

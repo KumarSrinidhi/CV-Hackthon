@@ -1,9 +1,12 @@
 # Runtime deps for the web app / Docker image (no torch, no datasets).
-numpy
-opencv-python-headless
-scipy
-scikit-image
-pillow
-tqdm
-pyyaml
-gradio
+#
+# Keep these versions aligned with the verified local UI. In particular, changing
+# Gradio can change the generated layout and component behavior.
+numpy==2.5.4
+opencv-python-headless==5.0.0.93
+scipy==1.18.1
+scikit-image==0.26.0
+pillow==12.3.0
+tqdm==4.70.1
+pyyaml==6.0.3
+gradio==6.31.0
