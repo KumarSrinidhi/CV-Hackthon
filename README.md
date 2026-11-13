@@ -158,6 +158,15 @@ Notes:
 - App Runner source-from-GitHub also works (it builds this `Dockerfile`); it just needs an ECR
   repo + connection configured in the console.
 
+## Contributors
+
+| Name | Area | GitHub |
+|------|------|--------|
+| Rakshitha | Deep learning, data & evaluation | [@Rakshithaa5](https://github.com/Rakshithaa5) |
+| Tanush | Classical computer vision | [@tanushg07](https://github.com/tanushg07) |
+| Rishita | Hybrid fusion | [@itsrishitacodeforspace](https://github.com/itsrishitacodeforspace) |
+| Kumar | Application, integration & deployment | [@KumarSrinidhi](https://github.com/KumarSrinidhi) |
+
 ## Limitations
 
 - The current [audit](results/submission_audit/README.md) verifies real SGNet
